@@ -78,8 +78,10 @@ struct Transaction {
     uint256 value;
     bytes data;
     bool executed;
+    bool cancelled;
     uint256 numApprovals;
     uint256 timestamp;
+    address proposer; // Track who proposed the transaction
 }
 ```
 
@@ -89,9 +91,11 @@ struct Transaction {
 - `approveTransaction(bytes32 txHash)` - Approve pending transaction
 - `executeTransaction(bytes32 txHash)` - Execute transaction after threshold met
 - `revokeApproval(bytes32 txHash)` - Revoke previous approval
+- `cancelTransaction(bytes32 txHash)` - Cancel a pending transaction (only proposer or if threshold not met)
 - `addOwner(address owner)` - Add new owner (requires multisig)
 - `removeOwner(address owner)` - Remove owner (requires multisig)
 - `changeThreshold(uint256 _threshold)` - Change approval threshold (requires multisig)
+- `getTransaction(bytes32 txHash)` - Retrieve transaction details by hash
 
 **Module Support:**
 - `enableModule(address module)` - Enable extension module

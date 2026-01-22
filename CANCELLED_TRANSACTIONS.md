@@ -12,7 +12,7 @@ Added new method `getCancelledTransactions()` that:
 - Queries `TransactionCancelled` events from the smart contract
 - Fetches transaction details for each cancelled transaction
 - Returns a list of cancelled transactions with their approval history
-- Handles the same block range limitations as other event queries (5000 blocks, fallback to 2000)
+- Handles the same block range limitations as other event queries (uses 5,000 blocks conservatively, network limit is 10,000 blocks, fallback to 2,000 if needed)
 
 ### 2. useMultisig Hook (`frontend/src/hooks/useMultisig.ts`)
 

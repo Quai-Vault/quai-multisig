@@ -18,6 +18,12 @@ quai-multisig/
 - **Upgradeable**: Proxy pattern for future multi-shard support
 - **Modular**: Extensible module system for additional features
 - **Secure**: Built with security best practices and comprehensive testing
+- **Real-Time Updates**: Automatic polling for wallet state, balances, and transactions
+- **Transaction Management**: Propose, approve, execute, cancel, and revoke approvals
+- **Owner Management**: Add/remove owners and change approval thresholds via multisig
+- **Transaction History**: View executed and cancelled transactions with detailed decoding
+- **Transaction Lookup**: Find and interact with transactions beyond the 7-hour query window
+- **Modern UI**: Dark vault theme with responsive design and comprehensive notifications
 
 ## Quick Start
 
@@ -67,10 +73,11 @@ For detailed documentation, see [quai-multisig.md](./quai-multisig.md)
 ## Development Roadmap
 
 - [x] Phase 0: Project setup and architecture
-- [ ] Phase 1: MVP - Core multisig functionality
-- [ ] Phase 2: Enhanced features and modules
-- [ ] Phase 3: Polish and optimization
+- [x] Phase 1: MVP - Core multisig functionality
+- [x] Phase 2: Enhanced features (owner management, transaction history, real-time updates)
+- [x] Phase 3: Polish and optimization (UI overhaul, notifications, transaction cancellation)
 - [ ] Phase 4: Multi-shard support
+- [ ] Phase 5: Module management UI (Social Recovery, Daily Limits, Whitelist)
 
 ## Contributing
 

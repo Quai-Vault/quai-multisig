@@ -123,15 +123,59 @@ PROXY_FACTORY=0x5678...
 
 **Copy these addresses** to your `.env` file for frontend use.
 
-## Frontend Setup (Coming Next)
+## Frontend Setup
 
-The frontend will be built with:
+The frontend is built with:
 - React 18+ with TypeScript
 - Vite for build tooling
 - Quais.js for Quai Network interaction
-- TailwindCSS for styling
+- TailwindCSS with custom vault theme
+- React Query for data fetching
+- Zustand for state management
 
-Stay tuned for frontend setup instructions!
+### Frontend Installation
+
+```bash
+cd frontend
+npm install
+```
+
+### Configure Frontend Environment
+
+Copy the frontend environment template:
+
+```bash
+cp .env.example .env
+```
+
+Edit `frontend/.env` and add contract addresses:
+
+```env
+VITE_MULTISIG_IMPLEMENTATION=0x00027C852a007C1AF78F40F2051dbf10853Da25B
+VITE_PROXY_FACTORY=0x000C7C1fa37E5590404c257310dbBEBB64D993a9
+VITE_SOCIAL_RECOVERY_MODULE=0x00399eb06E476f63c8B573002c273c4958Cc5A6a
+VITE_DAILY_LIMIT_MODULE=0x007572B0b565DE076E345D6bCbCD0da3C5d37A22
+VITE_WHITELIST_MODULE=0x0059BE8D03E6C66Fc95eF0f2CD0128D81BB5bA53
+VITE_RPC_URL=https://rpc.quai.network
+```
+
+### Run Frontend Development Server
+
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend will be available at `http://localhost:5173`
+
+### Build Frontend for Production
+
+```bash
+cd frontend
+npm run build
+```
+
+The production build will be in `frontend/dist/`
 
 ## Troubleshooting
 
