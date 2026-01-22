@@ -102,16 +102,16 @@ export function ChangeThresholdModal({
       {!showFlow ? (
         <div className="space-y-6">
           <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
-            <p className="text-sm text-dark-300 mb-1">
+            <p className="text-lg text-dark-300 mb-1">
               Change the number of approvals required to execute transactions.
             </p>
-            <p className="text-xs font-mono text-dark-600 uppercase tracking-wider">
+            <p className="text-base font-mono text-dark-600 uppercase tracking-wider">
               Requires {currentThreshold} approval{currentThreshold !== 1 ? 's' : ''} from existing owners
             </p>
           </div>
           
           <div>
-            <label className="block text-xs font-mono text-dark-500 uppercase tracking-wider mb-3">
+            <label className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-3">
               New Threshold
             </label>
             <div className="flex items-center gap-4">
@@ -126,17 +126,17 @@ export function ChangeThresholdModal({
                 }}
                 className="input-field w-24"
               />
-              <span className="text-sm text-dark-400 font-mono">
+              <span className="text-lg text-dark-400 font-mono">
                 of {ownerCount} owner{ownerCount !== 1 ? 's' : ''}
               </span>
             </div>
-            <div className="mt-3 bg-vault-dark-3 rounded-md p-3 border border-dark-600">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Current:</span>
+            <div className="mt-3 bg-vault-dark-3 rounded-md p-4 border border-dark-600">
+              <div className="flex items-center justify-between text-lg">
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Current:</span>
                 <span className="text-primary-400 font-semibold">{currentThreshold}</span>
               </div>
-              <div className="flex items-center justify-between text-sm mt-2">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">New:</span>
+              <div className="flex items-center justify-between text-lg mt-2">
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">New:</span>
                 <span className="text-dark-200 font-semibold">{newThreshold}</span>
               </div>
             </div>
@@ -144,11 +144,11 @@ export function ChangeThresholdModal({
 
           {errors.length > 0 && (
             <div className="bg-gradient-to-r from-primary-900/90 via-primary-800/90 to-primary-900/90 border-l-4 border-primary-600 rounded-md p-4 shadow-red-glow">
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-4">
                 <svg className="w-5 h-5 text-primary-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
-                <ul className="text-sm text-primary-200 space-y-1 flex-1">
+                <ul className="text-lg text-primary-200 space-y-1 flex-1">
                   {errors.map((error, index) => (
                     <li key={index} className="font-medium">• {error}</li>
                   ))}
@@ -158,7 +158,7 @@ export function ChangeThresholdModal({
           )}
 
           <div className="vault-divider pt-6">
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-4 justify-end">
               <button onClick={handleCancel} className="btn-secondary">
                 Cancel
               </button>

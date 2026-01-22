@@ -40,25 +40,25 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       
       {/* Modal container - offset by sidebar and topbar */}
       <div 
-        className="fixed inset-0 z-50 overflow-y-auto pointer-events-none pl-48 pt-[4.5rem] pb-4"
+        className="fixed inset-0 z-50 overflow-y-auto pointer-events-none pl-64 pt-[7.5rem] pb-6"
         onClick={onClose}
       >
-        <div className="flex min-h-[calc(100vh-4.5rem-1rem)] items-start justify-center p-4 pointer-events-none">
+        <div className="flex min-h-[calc(100vh-7.5rem-1.5rem)] items-start justify-center p-5 pointer-events-none">
           <div
-            className={`relative w-full ${sizeClasses[size]} vault-panel shadow-vault-outer border-2 border-dark-700 max-h-[calc(100vh-4.5rem-1rem-2rem)] flex flex-col pointer-events-auto`}
+            className={`relative w-full ${sizeClasses[size]} vault-panel shadow-vault-outer border-2 border-dark-700 max-h-[calc(100vh-7.5rem-1.5rem-2rem)] flex flex-col pointer-events-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Fixed */}
-            <div className="flex items-center justify-between p-3 border-b-2 border-dark-700 relative flex-shrink-0">
+            <div className="flex items-center justify-between p-5 border-b-2 border-dark-700 relative flex-shrink-0">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-600/50 to-transparent"></div>
-              <h2 className="text-sm font-display font-bold text-gradient-red vault-text-glow">{title}</h2>
+              <h2 className="text-lg font-display font-bold text-gradient-red vault-text-glow">{title}</h2>
               <button
                 onClick={onClose}
-                className="text-dark-500 hover:text-primary-400 transition-colors p-1 rounded hover:bg-vault-dark-4"
+                className="text-dark-500 hover:text-primary-400 transition-colors p-4 rounded hover:bg-vault-dark-4"
                 aria-label="Close"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-6 h-6"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -74,7 +74,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
             </div>
 
             {/* Content - Scrollable */}
-            <div className="p-3 overflow-y-auto flex-1 min-h-0">
+            <div className="p-5 overflow-y-auto flex-1 min-h-0">
               {children}
             </div>
           </div>

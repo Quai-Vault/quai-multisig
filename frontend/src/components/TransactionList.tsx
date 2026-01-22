@@ -62,7 +62,7 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {transactions.length === 0 ? (
         <div className="text-center py-4">
           <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-vault-dark-4 border border-dark-600 mb-2">
@@ -80,7 +80,7 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
               />
             </svg>
           </div>
-          <p className="text-xs text-dark-400 font-semibold">No pending transactions</p>
+          <p className="text-base text-dark-400 font-semibold">No pending transactions</p>
         </div>
       ) : (
         transactions.map((tx) => {
@@ -103,19 +103,19 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
           return (
             <div
               key={tx.hash}
-              className="vault-panel p-3 hover:border-primary-600/50 transition-all duration-300"
+              className="vault-panel p-5 hover:border-primary-600/50 transition-all duration-300"
             >
             {/* Transaction Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-2 mb-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-4 mb-3">
               <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${decoded.bgColor} ${decoded.textColor} border ${decoded.borderColor} shadow-vault-inner`}>
-                    <span className="mr-1">{decoded.icon}</span>
+                <div className="flex flex-wrap items-center gap-4 mb-2.5">
+                  <span className={`inline-flex items-center px-3 py-1.5 rounded text-base font-semibold ${decoded.bgColor} ${decoded.textColor} border ${decoded.borderColor} shadow-vault-inner`}>
+                    <span className="mr-2">{decoded.icon}</span>
                     {decoded.description}
                   </span>
                   {canExecute && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-gradient-to-r from-primary-700 to-primary-800 text-primary-200 border border-primary-600 shadow-red-glow animate-pulse-slow">
-                      <svg className="w-2.5 h-2.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded text-base font-semibold bg-gradient-to-r from-primary-700 to-primary-800 text-primary-200 border border-primary-600 shadow-red-glow animate-pulse-slow">
+                      <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                       Ready to execute
@@ -123,23 +123,23 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
                   )}
                 </div>
                 {decoded.details && (
-                  <p className="text-xs text-dark-300 font-medium mt-1 mb-0.5">{decoded.details}</p>
+                  <p className="text-base text-dark-300 font-medium mt-1 mb-0.5">{decoded.details}</p>
                 )}
-                <p className="text-xs font-mono text-dark-600 uppercase tracking-wider">{formatTimestamp(tx.timestamp)}</p>
+                <p className="text-base font-mono text-dark-600 uppercase tracking-wider">{formatTimestamp(tx.timestamp)}</p>
               </div>
               <div className="text-right flex-shrink-0">
                 {tx.value !== '0' && (
-                  <div className="bg-vault-dark-4 rounded px-2 py-1.5 border border-dark-600 mb-1.5">
-                    <p className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-0.5">Value</p>
-                    <p className="text-xs font-display font-bold text-gradient-red vault-text-glow">
+                  <div className="bg-vault-dark-4 rounded px-4 py-2.5 border border-dark-600 mb-1.5">
+                    <p className="text-base font-mono text-dark-500 uppercase tracking-wider mb-0.5">Value</p>
+                    <p className="text-base font-display font-bold text-gradient-red vault-text-glow">
                       {parseFloat(quais.formatQuai(tx.value)).toFixed(4)} QUAI
                     </p>
                   </div>
                 )}
-                <div className="bg-vault-dark-4 rounded px-2 py-1.5 border border-dark-600">
-                  <p className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-1">Hash</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-mono text-primary-400 break-all max-w-[120px] flex-1">
+                <div className="bg-vault-dark-4 rounded px-4 py-2.5 border border-dark-600">
+                  <p className="text-base font-mono text-dark-500 uppercase tracking-wider mb-1">Hash</p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-base font-mono text-primary-400 break-all max-w-[120px] flex-1">
                       {formatAddress(tx.hash)}
                     </p>
                     <button
@@ -164,19 +164,19 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
 
             {/* Transaction Details - Only show if not a self-call */}
             {tx.to.toLowerCase() !== walletAddress.toLowerCase() && (
-              <div className="bg-vault-dark-4 rounded p-2 mb-2 border border-dark-600">
-                <div className="flex justify-between items-center text-xs gap-2">
-                  <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">To:</span>
+              <div className="bg-vault-dark-4 rounded p-4 mb-3 border border-dark-600">
+                <div className="flex justify-between items-center text-base gap-4">
+                  <span className="text-base font-mono text-dark-500 uppercase tracking-wider">To:</span>
                   <span className="font-mono text-primary-300">{formatAddress(tx.to)}</span>
                 </div>
               </div>
             )}
 
             {/* Approval Progress */}
-            <div className="mb-2">
+            <div className="mb-3">
               <div className="flex justify-between items-center mb-1">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Approvals</span>
-                <span className="text-xs font-semibold text-dark-200">
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Approvals</span>
+                <span className="text-base font-semibold text-dark-200">
                   <span className="text-primary-400">{tx.numApprovals.toString()}</span>
                   <span className="text-dark-500 mx-0.5">/</span>
                   <span className="text-dark-300">{tx.threshold.toString()}</span>
@@ -195,23 +195,23 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
             </div>
 
             {/* Approvals List */}
-            <div className="mb-2">
-              <h4 className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-1">Approved by</h4>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="mb-3">
+              <h4 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-2">Approved by</h4>
+              <div className="flex flex-wrap gap-3">
                 {Object.entries(tx.approvals).map(([owner, approved]) => {
                   if (!approved) return null;
                   const isYou = owner.toLowerCase() === connectedAddress?.toLowerCase();
                   return (
                     <span
                       key={owner}
-                      className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border shadow-vault-inner ${
+                      className={`inline-flex items-center px-3 py-1.5 rounded text-base font-medium border shadow-vault-inner ${
                         isYou
                           ? 'bg-gradient-to-r from-primary-800/50 to-primary-900/50 text-primary-300 border-primary-600/50'
                           : 'bg-vault-dark-4 text-dark-300 border-dark-600'
                       }`}
                     >
                       <span className="font-mono">{formatAddress(owner)}</span>
-                      {isYou && <span className="ml-1.5 text-primary-400 font-semibold">(You)</span>}
+                      {isYou && <span className="ml-2 text-primary-400 font-semibold">(You)</span>}
                     </span>
                   );
                 })}
@@ -220,15 +220,15 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
 
             {/* Actions */}
             {isOwner && (
-              <div className="pt-2 border-t border-dark-700">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="pt-3 border-t border-dark-700">
+                <div className="flex flex-wrap gap-4">
                   {!hasApproved ? (
                     <button
                       onClick={() => handleApprove(tx)}
                       disabled={hasApproved}
-                      className="btn-primary inline-flex items-center gap-1.5 text-xs"
+                      className="btn-primary inline-flex items-center gap-2 text-base"
                     >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       Approve
@@ -236,9 +236,9 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
                   ) : (
                     <button
                       onClick={() => handleRevoke(tx)}
-                      className="btn-secondary inline-flex items-center gap-1.5 text-xs"
+                      className="btn-secondary inline-flex items-center gap-2 text-base"
                     >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       Revoke
@@ -247,9 +247,9 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
                   {canExecute && (
                     <button
                       onClick={() => handleExecute(tx)}
-                      className="btn-primary inline-flex items-center gap-1.5 text-xs bg-gradient-to-r from-primary-500 to-primary-600"
+                      className="btn-primary inline-flex items-center gap-2 text-base bg-gradient-to-r from-primary-500 to-primary-600"
                     >
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                       Execute
@@ -258,10 +258,10 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
                   {canCancel && (
                     <button
                       onClick={() => handleCancel(tx)}
-                      className="px-2 py-1 text-xs font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 rounded border border-red-700 shadow-vault-button hover:shadow-red-glow transition-all duration-300"
+                      className="px-5 py-2.5 text-base font-semibold text-white bg-gradient-to-r from-red-600 to-red-700 rounded border border-red-700 shadow-vault-button hover:shadow-red-glow transition-all duration-300"
                     >
-                      <span className="inline-flex items-center gap-1.5">
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <span className="inline-flex items-center gap-2">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         Cancel

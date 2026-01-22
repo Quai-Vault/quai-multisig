@@ -127,21 +127,21 @@ export function NewTransaction() {
       <div className="mb-8">
         <button
           onClick={() => navigate(`/wallet/${walletAddress}`)}
-          className="text-sm text-primary-400 hover:text-primary-300 mb-3 inline-flex items-center gap-2 transition-colors font-semibold"
+          className="text-lg text-primary-400 hover:text-primary-300 mb-3 inline-flex items-center gap-4 transition-colors font-semibold"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back to Vault
         </button>
         <h1 className="text-4xl font-display font-bold text-gradient-red vault-text-glow">New Transaction</h1>
-        <p className="text-sm font-mono text-dark-500 uppercase tracking-wider mt-2">Propose a new multisig transaction</p>
+        <p className="text-lg font-mono text-dark-500 uppercase tracking-wider mt-2">Propose a new multisig transaction</p>
       </div>
 
       <form onSubmit={handleSubmit} className="vault-panel p-8">
         {/* Recipient Address */}
         <div className="mb-8">
-          <label htmlFor="to" className="block text-xs font-mono text-dark-500 uppercase tracking-wider mb-3">
+          <label htmlFor="to" className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-3">
             Recipient Address
           </label>
           <input
@@ -156,7 +156,7 @@ export function NewTransaction() {
 
         {/* Value */}
         <div className="mb-8">
-          <label htmlFor="value" className="block text-xs font-mono text-dark-500 uppercase tracking-wider mb-3">
+          <label htmlFor="value" className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-3">
             Amount (QUAI)
           </label>
           <input
@@ -167,14 +167,14 @@ export function NewTransaction() {
             placeholder="0.0"
             className="input-field w-full"
           />
-          <p className="mt-2 text-xs font-mono text-dark-600">
+          <p className="mt-2 text-base font-mono text-dark-600">
             Enter the amount in QUAI (e.g., 1.5 for 1.5 QUAI)
           </p>
         </div>
 
         {/* Data (Optional) */}
         <div className="mb-8">
-          <label htmlFor="data" className="block text-xs font-mono text-dark-500 uppercase tracking-wider mb-3">
+          <label htmlFor="data" className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-3">
             Data (Optional)
           </label>
           <textarea
@@ -183,31 +183,31 @@ export function NewTransaction() {
             onChange={(e) => setData(e.target.value)}
             placeholder="0x"
             rows={4}
-            className="input-field w-full font-mono text-sm"
+            className="input-field w-full font-mono text-lg"
           />
-          <p className="mt-2 text-xs font-mono text-dark-600">
+          <p className="mt-2 text-base font-mono text-dark-600">
             Optional contract call data. Leave as "0x" for simple transfers.
           </p>
         </div>
 
         {/* Transaction Summary */}
         <div className="mb-8 bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-          <h3 className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Summary</h3>
-          <div className="space-y-3 text-sm">
+          <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Summary</h3>
+          <div className="space-y-3 text-lg">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Type:</span>
+              <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Type:</span>
               <span className="text-dark-200 font-semibold">
                 {!data || data === '0x' ? 'Simple Transfer' : 'Contract Call'}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
+              <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
               <span className="text-primary-300 font-mono truncate max-w-xs text-right">
                 {to || '-'}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
+              <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
               <span className="text-dark-200 font-semibold">{value || '0'} <span className="text-primary-400">QUAI</span></span>
             </div>
           </div>
@@ -216,13 +216,13 @@ export function NewTransaction() {
         {/* Errors */}
         {errors.length > 0 && (
           <div className="mb-8 bg-gradient-to-r from-primary-900/90 via-primary-800/90 to-primary-900/90 border-l-4 border-primary-600 rounded-md p-4 shadow-red-glow">
-            <h4 className="text-sm font-semibold text-primary-200 mb-3 flex items-center gap-2">
+            <h4 className="text-lg font-semibold text-primary-200 mb-3 flex items-center gap-4">
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               Please fix the following errors:
             </h4>
-            <ul className="list-disc list-inside text-sm text-primary-200 space-y-1">
+            <ul className="list-disc list-inside text-lg text-primary-200 space-y-1">
               {errors.map((error, index) => (
                 <li key={index} className="font-medium">{error}</li>
               ))}
@@ -232,13 +232,13 @@ export function NewTransaction() {
 
         {/* Submit Button */}
         <div className="vault-divider pt-6 mt-8">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-4">
             <button
               type="submit"
               className="btn-primary flex-1 min-w-[200px]"
             >
-              <span className="flex items-center justify-center gap-2">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <span className="flex items-center justify-center gap-4">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 Propose Transaction
@@ -265,28 +265,28 @@ export function NewTransaction() {
         <div className="space-y-4">
           {/* Transaction Summary */}
           <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-            <h3 className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
-            <div className="space-y-3 text-sm">
+            <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
+            <div className="space-y-3 text-lg">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Type:</span>
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Type:</span>
                 <span className="text-dark-200 font-semibold">
                   {!data || data === '0x' ? 'Simple Transfer' : 'Contract Call'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
                 <span className="text-primary-300 font-mono break-all text-right max-w-xs">
                   {to || '-'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
+                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
                 <span className="text-dark-200 font-semibold">{value || '0'} <span className="text-primary-400">QUAI</span></span>
               </div>
               {data && data !== '0x' && (
                 <div className="flex justify-between items-start">
-                  <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Data:</span>
-                  <span className="text-dark-400 font-mono text-xs break-all text-right max-w-xs">
+                  <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Data:</span>
+                  <span className="text-dark-400 font-mono text-base break-all text-right max-w-xs">
                     {data.length > 20 ? `${data.slice(0, 20)}...` : data}
                   </span>
                 </div>

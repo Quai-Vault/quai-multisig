@@ -63,16 +63,16 @@ export function RevokeApprovalModal({
     >
       <div className="space-y-6">
         <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-          <h3 className="text-xs font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
-          <div className="space-y-3 text-sm">
+          <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
+          <div className="space-y-3 text-lg">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Hash:</span>
+              <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Hash:</span>
               <span className="font-mono text-primary-300 break-all text-right max-w-xs">
                 {transaction.hash}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-mono text-dark-500 uppercase tracking-wider">Approvals:</span>
+              <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Approvals:</span>
               <span className="text-dark-200 font-semibold">
                 <span className="text-primary-400">{transaction.numApprovals}</span>
                 <span className="text-dark-500 mx-2">/</span>
