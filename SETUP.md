@@ -151,12 +151,12 @@ cp .env.example .env
 Edit `frontend/.env` and add contract addresses:
 
 ```env
-VITE_MULTISIG_IMPLEMENTATION=0x00027C852a007C1AF78F40F2051dbf10853Da25B
-VITE_PROXY_FACTORY=0x000C7C1fa37E5590404c257310dbBEBB64D993a9
-VITE_SOCIAL_RECOVERY_MODULE=0x00399eb06E476f63c8B573002c273c4958Cc5A6a
-VITE_DAILY_LIMIT_MODULE=0x007572B0b565DE076E345D6bCbCD0da3C5d37A22
-VITE_WHITELIST_MODULE=0x0059BE8D03E6C66Fc95eF0f2CD0128D81BB5bA53
-VITE_RPC_URL=https://rpc.quai.network
+VITE_MULTISIG_IMPLEMENTATION=0x006179ef48CDBE621C9Fb7301615daBC070A95A7
+VITE_PROXY_FACTORY=0x0008962F68a05A3dF589E965289f887484e6Ee2e
+VITE_SOCIAL_RECOVERY_MODULE=0x002C543bf327860b212548DE25DBB5fD3dA56B41
+VITE_DAILY_LIMIT_MODULE=0x0016947f85495602D3F3D2cd3f78Cf1E5DD5C79F
+VITE_WHITELIST_MODULE=0x0036fE8BAad7eBb35c453386D7740C81796161dB
+VITE_RPC_URL=https://rpc.orchard.quai.network
 ```
 
 ### Run Frontend Development Server
@@ -240,8 +240,14 @@ quai-multisig/
 │   ├── test/                 # Contract tests
 │   ├── hardhat.config.ts     # Hardhat configuration
 │   └── package.json          # Contract dependencies
-├── frontend/                 # (Coming soon)
-└── backend/                  # (Optional)
+├── frontend/                 # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/       # UI components
+│   │   ├── pages/            # Page components
+│   │   ├── services/         # Blockchain services
+│   │   └── hooks/            # React hooks
+│   └── package.json          # Frontend dependencies
+└── backend/                  # (Optional - not required)
 ```
 
 ## Next Steps
@@ -251,9 +257,9 @@ quai-multisig/
 3. ✅ Compile contracts
 4. ✅ Run tests
 5. ✅ Deploy to testnet
-6. 🚧 Set up frontend
-7. 🚧 Create your first multisig wallet
-8. 🚧 Test transaction flows
+6. ✅ Set up frontend
+7. ✅ Create your first multisig wallet
+8. ✅ Test transaction flows
 
 ## Resources
 

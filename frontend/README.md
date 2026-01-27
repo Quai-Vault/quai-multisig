@@ -1,73 +1,138 @@
-# React + TypeScript + Vite
+# Quai Vault Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React frontend for the Quai Network multisig wallet solution.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **Quais.js** for Quai Network interaction
+- **TailwindCSS** with custom vault theme
+- **React Query** for data fetching and caching
+- **Zustand** for state management
+- **Vitest** for unit testing
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Wallet connection (Pelagus)
+- Multisig wallet creation and management
+- Transaction proposal, approval, and execution
+- Owner management (add/remove owners, change threshold)
+- Module management (Social Recovery, Daily Limits, Whitelist)
+- Transaction history with decoding
+- Real-time updates with polling
+- Comprehensive notification system
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+
+- npm or yarn
+- Pelagus wallet browser extension
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Environment Configuration
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Copy the environment template and configure:
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+cp .env.example .env
 ```
+
+Required environment variables:
+
+```env
+VITE_MULTISIG_IMPLEMENTATION=0x...
+VITE_PROXY_FACTORY=0x...
+VITE_SOCIAL_RECOVERY_MODULE=0x...
+VITE_DAILY_LIMIT_MODULE=0x...
+VITE_WHITELIST_MODULE=0x...
+VITE_RPC_URL=https://rpc.orchard.quai.network
+VITE_CHAIN_ID=9000
+```
+
+### Development
+
+```bash
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`
+
+### Build
+
+```bash
+npm run build
+```
+
+Production build outputs to `dist/`
+
+### Testing
+
+```bash
+npm test
+```
+
+Run tests with coverage:
+
+```bash
+npm run test:coverage
+```
+
+## Project Structure
+
+```
+src/
+├── components/         # Reusable UI components
+│   ├── modules/        # Module-specific components
+│   └── ...
+├── pages/              # Page components
+├── services/           # Blockchain interaction services
+│   ├── core/           # Core services (Wallet, Transaction, Owner)
+│   ├── modules/        # Module services (DailyLimit, Whitelist, SocialRecovery)
+│   └── utils/          # Utility functions
+├── hooks/              # Custom React hooks
+├── store/              # Zustand state management
+├── types/              # TypeScript type definitions
+├── config/             # Configuration and ABIs
+└── test/               # Test setup and utilities
+```
+
+## Key Services
+
+- **MultisigService** - Facade for all wallet operations
+- **WalletService** - Wallet deployment and info
+- **TransactionService** - Transaction proposal/approval/execution
+- **OwnerService** - Owner management operations
+- **DailyLimitModuleService** - Daily spending limits
+- **WhitelistModuleService** - Address whitelisting
+- **SocialRecoveryModuleService** - Guardian-based recovery
+
+## Testing
+
+The frontend has 330+ passing tests covering:
+
+- Service layer (all blockchain interactions)
+- Utility functions (gas estimation, error handling)
+- Core business logic
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+```
+
+## License
+
+MIT License
