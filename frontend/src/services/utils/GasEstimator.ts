@@ -37,7 +37,6 @@ export async function estimateGasWithBuffer(
 
   try {
     estimated = await contractMethod.estimateGas(...args);
-    console.log(`  Gas estimation succeeded: ${estimated.toString()}`);
   } catch (error: any) {
     console.warn(`  Gas estimation failed, using default:`, error);
     return {
@@ -58,8 +57,6 @@ export async function estimateGasWithBuffer(
     gasLimit = opts.maxGas;
   }
 
-  console.log(`  Using gas limit with ${opts.bufferPercent}% buffer: ${gasLimit.toString()}`);
-
   return { gasLimit, estimated };
 }
 
@@ -75,7 +72,6 @@ export async function estimateGasOrThrow(
 ): Promise<bigint> {
   try {
     const estimated = await contractMethod.estimateGas(...args);
-    console.log(`  Gas estimation for ${operation} succeeded: ${estimated.toString()}`);
     return estimated;
   } catch (error: any) {
     const message = extractErrorMessage(error, contract);

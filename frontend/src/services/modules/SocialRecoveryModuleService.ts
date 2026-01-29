@@ -115,8 +115,6 @@ export class SocialRecoveryModuleService extends BaseModuleService {
   async hasApprovedRecovery(walletAddress: string, recoveryHash: string, address: string): Promise<boolean> {
     const module = this.getModuleContract();
 
-    console.log(`hasApprovedRecovery: Checking ${address} for recovery ${recoveryHash.slice(0, 10)}...`);
-
     try {
       const recovery = await this.getRecovery(walletAddress, recoveryHash);
 
