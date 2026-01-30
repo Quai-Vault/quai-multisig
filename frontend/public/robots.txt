@@ -1,0 +1,7 @@
+# Quai Multisig Vault - Robots.txt
+User-agent: *
+Allow: /
+Disallow: /wallet/*/transaction/
+
+# Sitemap
+Sitemap: /sitemap.xml
