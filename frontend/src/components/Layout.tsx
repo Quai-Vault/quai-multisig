@@ -51,17 +51,27 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center gap-8">
               <Link
                 to="/"
-                className="flex items-center group"
+                className="flex items-center gap-3 group"
               >
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary-600/20 blur-xl group-hover:bg-primary-600/30 transition-all"></div>
-                  <span className="relative text-base font-display font-bold text-gradient-red vault-text-glow">
-                    QUAI VAULT
+                <div className="relative flex items-center justify-center w-9 h-9">
+                  <div className="absolute inset-0 bg-primary-600/20 blur-lg group-hover:bg-primary-600/30 transition-all rounded-full"></div>
+                  <img
+                    src="/logo.svg"
+                    alt="Quai Vault Logo"
+                    className="relative w-9 h-9 transition-transform group-hover:scale-110"
+                  />
+                </div>
+                <div className="flex items-center">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary-600/20 blur-xl group-hover:bg-primary-600/30 transition-all"></div>
+                    <span className="relative text-base font-display font-bold text-gradient-red vault-text-glow">
+                      QUAI VAULT
+                    </span>
+                  </div>
+                  <span className="ml-2 text-base font-mono text-dark-500 uppercase tracking-wider">
+                    Multisig
                   </span>
                 </div>
-                <span className="ml-2 text-base font-mono text-dark-500 uppercase tracking-wider">
-                  Multisig
-                </span>
               </Link>
               <div className="hidden sm:flex sm:space-x-3">
                 <Link
@@ -158,9 +168,16 @@ export function Layout({ children }: LayoutProps) {
       <footer className={`relative z-10 vault-panel border-t-2 border-dark-700 ${location.pathname.startsWith('/docs') ? 'ml-64' : 'ml-64'}`}>
         <div className="px-5 py-3">
           <div className="flex flex-col items-center gap-4.5">
-            <p className="text-center text-base font-mono text-dark-500 uppercase tracking-wider">
-              Quai Multisig Vault
-            </p>
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo.svg"
+                alt="Quai Vault Logo"
+                className="w-6 h-6 opacity-70"
+              />
+              <p className="text-center text-base font-mono text-dark-500 uppercase tracking-wider">
+                Quai Multisig Vault
+              </p>
+            </div>
             <p className="text-center text-base text-dark-600">
               Decentralized multisig solution for Quai Network
             </p>

@@ -8,10 +8,15 @@ export function Dashboard() {
       {/* Hero Section */}
       <div className="vault-panel p-4 mb-4 text-center">
         <div className="mb-3">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-2">
-            <svg className="w-6 h-6 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-2">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 bg-primary-600/20 blur-xl rounded-full"></div>
+              <img
+                src="/logo.svg"
+                alt="Quai Vault Logo"
+                className="relative w-16 h-16"
+              />
+            </div>
           </div>
         </div>
         <h1 className="text-lg font-display font-bold text-gradient-red mb-2 vault-text-glow">
