@@ -4,6 +4,7 @@ import { multisigService } from '../services/MultisigService';
 import { transactionBuilderService } from '../services/TransactionBuilderService';
 import { notificationManager } from './NotificationContainer';
 import { Modal } from './Modal';
+import { CollapsibleNotice } from './CollapsibleNotice';
 
 interface DailyLimitConfigurationProps {
   walletAddress: string;
@@ -169,52 +170,37 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
       size="lg"
     >
       <div className="space-y-6">
-        {/* Multisig Approval Notice */}
-        <div className="bg-gradient-to-r from-blue-900/90 via-blue-800/90 to-blue-900/90 border-l-4 border-blue-600 rounded-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="text-base font-semibold text-blue-200 mb-1">Multisig Approval Required</h4>
-              <p className="text-sm text-blue-200/90">
-                Changes to the daily limit configuration now require multisig approval. When you set or reset the limit, a proposal will be created that other owners must approve before it takes effect.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Collapsible Notices */}
+        <div className="space-y-2">
+          <CollapsibleNotice title="Multisig Approval Required" variant="info">
+            <p>
+              Changes to the daily limit configuration require multisig approval. When you set or reset the limit, a proposal will be created that other owners must approve before it takes effect.
+            </p>
+          </CollapsibleNotice>
 
-        {/* Important Warning */}
-        <div className="bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="text-base font-semibold text-yellow-200 mb-1">Frontend-Only Enforcement</h4>
-              <p className="text-sm text-yellow-200/90 mb-2">
-                The daily limit is <strong>ONLY enforced in this frontend</strong>. Transactions can bypass this limitation by interacting with the multisig wallet contract directly (e.g., via Etherscan, other interfaces, or direct contract calls).
-              </p>
-              <p className="text-sm text-yellow-200/90">
-                This is a <strong>convenience feature, not a security mechanism</strong>. For true security, use multisig approvals for all transactions.
-              </p>
-            </div>
-          </div>
+          <CollapsibleNotice title="Frontend-Only Enforcement" variant="warning">
+            <p className="mb-2">
+              The daily limit is <strong>ONLY enforced in this frontend</strong>. Transactions can bypass this limitation by interacting with the multisig wallet contract directly (e.g., via Etherscan, other interfaces, or direct contract calls).
+            </p>
+            <p>
+              This is a <strong>convenience feature, not a security mechanism</strong>. For true security, use multisig approvals for all transactions.
+            </p>
+          </CollapsibleNotice>
         </div>
 
         {/* Current Configuration */}
         {isLoading ? (
           <div className="text-center py-8">
             <div className="inline-block w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-2 text-sm text-dark-500">Loading...</p>
+            <p className="mt-2 text-sm text-dark-400 dark:text-dark-500">Loading...</p>
           </div>
         ) : (
-          <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-            <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Current Configuration</h3>
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600">
+            <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-4">Current Configuration</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Daily Limit:</span>
-                <span className="text-dark-200 font-semibold">
+                <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Daily Limit:</span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">
                   {dailyLimit && dailyLimit.limit > 0n
                     ? `${transactionBuilderService.formatValue(dailyLimit.limit)} QUAI`
                     : 'Not set'}
@@ -223,14 +209,14 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
               {dailyLimit && dailyLimit.limit > 0n && (
                 <>
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Spent Today:</span>
-                    <span className="text-dark-200 font-semibold">
+                    <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Spent Today:</span>
+                    <span className="text-dark-700 dark:text-dark-200 font-semibold">
                       {transactionBuilderService.formatValue(dailyLimit.spent)} QUAI
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Remaining:</span>
-                    <span className="text-primary-400 font-semibold">
+                    <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Remaining:</span>
+                    <span className="text-primary-600 dark:text-primary-400 font-semibold">
                       {remainingLimit !== undefined
                         ? `${transactionBuilderService.formatValue(remainingLimit)} QUAI`
                         : 'Loading...'}
@@ -238,8 +224,8 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
                   </div>
                   {timeUntilReset !== undefined && (
                     <div className="flex justify-between items-center">
-                      <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Resets In:</span>
-                      <span className="text-dark-200 font-semibold">
+                      <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Resets In:</span>
+                      <span className="text-dark-700 dark:text-dark-200 font-semibold">
                         {formatTime(timeUntilReset)}
                       </span>
                     </div>
@@ -252,12 +238,12 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
 
         {/* Set New Limit */}
         <div>
-          <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">
+          <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-4">
             {dailyLimit && dailyLimit.limit > 0n ? 'Propose Limit Update' : 'Propose Daily Limit'}
           </h3>
           <div className="space-y-4">
             <div>
-              <label htmlFor="dailyLimit" className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+              <label htmlFor="dailyLimit" className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                 Daily Limit (QUAI)
               </label>
               <input
@@ -268,7 +254,7 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
                 placeholder={dailyLimit && dailyLimit.limit > 0n ? transactionBuilderService.formatValue(dailyLimit.limit) : "0.0"}
                 className="input-field w-full"
               />
-              <p className="mt-2 text-sm font-mono text-dark-600">
+              <p className="mt-2 text-sm font-mono text-dark-500 dark:text-dark-600">
                 Enter the maximum amount that can be spent per day (e.g., 10 for 10 QUAI). Set to <strong>0</strong> to disable the daily limit.
               </p>
             </div>
@@ -321,8 +307,8 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
         {/* Reset Limit */}
         {dailyLimit && dailyLimit.limit > 0n && dailyLimit.spent > 0n && (
           <div>
-            <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Propose Reset Daily Limit</h3>
-            <p className="text-sm text-dark-500 mb-4">
+            <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-4">Propose Reset Daily Limit</h3>
+            <p className="text-sm text-dark-400 dark:text-dark-500 mb-4">
               Propose resetting the spent amount to 0. The limit will automatically reset after 24 hours. This requires multisig approval.
             </p>
             <button

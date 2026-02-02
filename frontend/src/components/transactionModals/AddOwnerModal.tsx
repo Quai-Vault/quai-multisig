@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { TransactionFlow } from '../TransactionFlow';
 import { useMultisig } from '../../hooks/useMultisig';
-import * as quais from 'quais';
+import { isAddress } from 'quais';
 
 interface AddOwnerModalProps {
   isOpen: boolean;
@@ -63,7 +63,7 @@ export function AddOwnerModal({
       newErrors.push('Invalid address format: must be 0x followed by exactly 40 hexadecimal characters');
     } else {
       try {
-        if (!quais.isAddress(normalized)) {
+        if (!isAddress(normalized)) {
           newErrors.push('Invalid address format (checksum or validation error)');
         } else if (existingOwners.some(o => o.toLowerCase() === normalized.toLowerCase())) {
           newErrors.push('Address is already an owner');

@@ -26,11 +26,18 @@ graph TB
     subgraph "Frontend Application"
         UI[React UI]
         Services[Service Layer]
-        State[State Management<br/>Zustand]
+        State[State Management<br/>Zustand + React Query]
 
         UI --> Services
         UI --> State
         Services --> State
+    end
+
+    subgraph "Indexer Layer"
+        Supabase[Supabase<br/>Real-time Subscriptions]
+        IndexerDB[(PostgreSQL<br/>Indexed Data)]
+
+        Supabase --> IndexerDB
     end
 
     subgraph "Blockchain Network"
@@ -65,7 +72,8 @@ graph TB
 
     User --> Browser
     Browser --> UI
-    Services --> RPC
+    Services -->|Reads| Supabase
+    Services -->|Writes| RPC
     RPC --> Factory
     RPC --> Proxy1
     RPC --> Proxy2
@@ -74,6 +82,8 @@ graph TB
     style User fill:#e1f5ff
     style Browser fill:#fff4e1
     style UI fill:#f0f0f0
+    style Supabase fill:#ccffcc
+    style IndexerDB fill:#ccffcc
     style Factory fill:#ffcccc
     style Implementation fill:#ccffcc
     style Proxy1 fill:#ccccff
@@ -456,7 +466,7 @@ graph TB
 
 ## Frontend Architecture
 
-Service layer architecture and state management.
+Service layer architecture and state management with hybrid indexer/blockchain data fetching.
 
 ```mermaid
 graph TB
@@ -467,10 +477,9 @@ graph TB
         Settings[Settings]
     end
 
-    subgraph "State Management (Zustand)"
-        WalletStore[Wallet Store]
-        TxStore[Transaction Store]
-        ModuleStore[Module Store]
+    subgraph "State Management"
+        ReactQuery[React Query<br/>Server State]
+        Zustand[Zustand<br/>Client State]
     end
 
     subgraph "Service Layer"
@@ -479,6 +488,8 @@ graph TB
         subgraph "Core Services"
             TxService[TransactionService]
             TxBuilder[TransactionBuilderService]
+            OwnerService[OwnerService]
+            WalletService[WalletService]
             BaseService[BaseService]
         end
 
@@ -486,6 +497,14 @@ graph TB
             DailyService[DailyLimitModuleService]
             WhiteService[WhitelistModuleService]
             RecoveryService[SocialRecoveryModuleService]
+        end
+
+        subgraph "Indexer Services"
+            IndexerService[IndexerService<br/>Facade]
+            IndexerWallet[IndexerWalletService]
+            IndexerTx[IndexerTransactionService]
+            IndexerSub[IndexerSubscriptionService]
+            IndexerHealth[IndexerHealthService]
         end
     end
 
@@ -495,37 +514,69 @@ graph TB
         Contracts[Contract Instances]
     end
 
-    Dashboard --> WalletStore
-    Transactions --> TxStore
-    Modules --> ModuleStore
-    Settings --> WalletStore
+    subgraph "Indexer"
+        Supabase[Supabase Client]
+        Realtime[Real-time Subscriptions]
+    end
 
-    WalletStore --> MultisigService
-    TxStore --> MultisigService
-    ModuleStore --> MultisigService
+    Dashboard --> ReactQuery
+    Transactions --> ReactQuery
+    Modules --> ReactQuery
+    Settings --> Zustand
+
+    ReactQuery --> MultisigService
+    Zustand --> MultisigService
 
     MultisigService --> TxService
     MultisigService --> TxBuilder
+    MultisigService --> OwnerService
+    MultisigService --> WalletService
     MultisigService --> DailyService
     MultisigService --> WhiteService
     MultisigService --> RecoveryService
+    MultisigService --> IndexerService
 
     TxService --> BaseService
     TxBuilder --> BaseService
+    OwnerService --> BaseService
+    WalletService --> BaseService
     DailyService --> BaseService
     WhiteService --> BaseService
     RecoveryService --> BaseService
+
+    IndexerService --> IndexerWallet
+    IndexerService --> IndexerTx
+    IndexerService --> IndexerSub
+    IndexerService --> IndexerHealth
 
     BaseService --> Provider
     BaseService --> Signer
     BaseService --> Contracts
 
+    IndexerWallet --> Supabase
+    IndexerTx --> Supabase
+    IndexerSub --> Realtime
+    IndexerHealth --> Supabase
+
     Contracts --> Provider
 
     style MultisigService fill:#ffcccc
     style BaseService fill:#ccffcc
-    style WalletStore fill:#e1f5ff
+    style IndexerService fill:#ccffcc
+    style ReactQuery fill:#e1f5ff
+    style Zustand fill:#e1f5ff
+    style Supabase fill:#ffffcc
 ```
+
+### Data Fetching Strategy
+
+The frontend uses a **hybrid approach** for data fetching:
+
+- **Reads**: Use indexer when available (fast, historical data, real-time subscriptions)
+- **Writes**: Always use blockchain (transactions must go on-chain)
+- **Fallback**: If indexer unavailable, fall back to blockchain polling
+
+Real-time updates are provided via Supabase subscriptions with automatic reconnection handling. When subscriptions are unavailable, React Query polling (10-30 second intervals) provides fallback data freshness.
 
 ### Service Layer Pattern
 
@@ -535,9 +586,12 @@ classDiagram
         <<Facade>>
         -transactionService
         -transactionBuilder
+        -ownerService
+        -walletService
         -dailyLimitService
         -whitelistService
         -recoveryService
+        -indexerService
 
         +proposeTransaction()
         +approveTransaction()
@@ -564,28 +618,70 @@ classDiagram
         +executeTransaction()
         +cancelTransaction()
         +getTransaction()
-        +getTransactionApprovals()
+        +getPendingTransactions()
+        +getTransactionHistory()
     }
 
-    class TransactionBuilderService {
-        +buildAddOwnerData()
-        +buildRemoveOwnerData()
-        +buildChangeThresholdData()
-        +buildEnableModuleData()
-        +buildDisableModuleData()
-        +buildModuleConfigData()
+    class WalletService {
+        +deployWallet()
+        +getWalletInfo()
+        +getWalletsForOwner()
+        +isOwner()
+        +isModuleEnabled()
+        +getBalance()
+    }
+
+    class OwnerService {
+        +addOwner()
+        +removeOwner()
+        +changeThreshold()
+        +enableModule()
+        +disableModule()
+    }
+
+    class IndexerService {
+        <<Facade>>
+        -walletService
+        -transactionService
+        -subscriptionService
+        -healthService
+
+        +isAvailable()
+        +getHealth()
+    }
+
+    class IndexerWalletService {
+        +getWalletsForOwner()
+        +getWalletDetails()
+        +getWalletOwners()
+    }
+
+    class IndexerTransactionService {
+        +getPendingTransactions()
+        +getTransactionHistory()
+        +getConfirmationsForTransactions()
+    }
+
+    class IndexerSubscriptionService {
+        +subscribeToWallet()
+        +subscribeToTransactions()
+        +unsubscribeAll()
+    }
+
+    class IndexerHealthService {
+        +checkHealth()
+        +getSyncStatus()
     }
 
     class DailyLimitModuleService {
-        +setDailyLimit()
+        +proposeSetDailyLimit()
         +executeBelowLimit()
         +getRemainingLimit()
         +getTimeUntilReset()
-        +proposeSetDailyLimit()
     }
 
     class WhitelistModuleService {
-        +addToWhitelist()
+        +proposeAddToWhitelist()
         +removeFromWhitelist()
         +executeWhitelistedTransaction()
         +isWhitelisted()
@@ -593,7 +689,7 @@ classDiagram
     }
 
     class SocialRecoveryModuleService {
-        +setupRecovery()
+        +proposeSetupRecovery()
         +initiateRecovery()
         +approveRecovery()
         +executeRecovery()
@@ -603,16 +699,24 @@ classDiagram
     }
 
     MultisigService --> TransactionService
-    MultisigService --> TransactionBuilderService
+    MultisigService --> WalletService
+    MultisigService --> OwnerService
     MultisigService --> DailyLimitModuleService
     MultisigService --> WhitelistModuleService
     MultisigService --> SocialRecoveryModuleService
+    MultisigService --> IndexerService
 
     TransactionService --|> BaseService
-    TransactionBuilderService --|> BaseService
+    WalletService --|> BaseService
+    OwnerService --|> BaseService
     DailyLimitModuleService --|> BaseService
     WhitelistModuleService --|> BaseService
     SocialRecoveryModuleService --|> BaseService
+
+    IndexerService --> IndexerWalletService
+    IndexerService --> IndexerTransactionService
+    IndexerService --> IndexerSubscriptionService
+    IndexerService --> IndexerHealthService
 ```
 
 ---
@@ -793,8 +897,10 @@ sequenceDiagram
 ### Frontend
 - **Framework**: React 18 + TypeScript
 - **Build Tool**: Vite
-- **State**: Zustand
+- **State**: Zustand (client state) + React Query (server state)
 - **Blockchain**: quais.js (Quai-specific ethers.js fork)
+- **Indexer**: Supabase (real-time subscriptions + database queries)
+- **Validation**: Zod (runtime type validation)
 - **Styling**: TailwindCSS
 - **Testing**: Vitest + React Testing Library
 
@@ -828,8 +934,14 @@ WHITELIST_MODULE=0x...
 # Network
 RPC_URL=https://rpc.cyprus1.orchard.quai.network
 BLOCK_EXPLORER_URL=https://quaiscan.io
+
+# Indexer (frontend uses VITE_ prefix)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_NETWORK_SCHEMA=testnet
+VITE_INDEXER_URL=http://localhost:3001
 ```
 
 ---
 
-*Generated: 2026-01-29*
+*Updated: 2026-02-01*

@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { isAddress, getAddress } from 'quais';
 import type { Provider } from '../../types';
 import { CONTRACT_ADDRESSES } from '../../config/contracts';
 import { BaseModuleService } from './BaseModuleService';
@@ -112,7 +112,13 @@ export class WhitelistModuleService extends BaseModuleService {
     const normalizedTo = validateAddress(to);
     const module = this.getModuleContract(signer);
 
-    // Pre-validation
+    // Pre-validation: Check module is enabled first
+    const wallet = this.getWalletContract(walletAddress);
+    const isModuleEnabled = await wallet.modules(CONTRACT_ADDRESSES.WHITELIST_MODULE);
+    if (!isModuleEnabled) {
+      throw new Error('Whitelist module is not enabled for this wallet');
+    }
+
     const isWhitelisted = await this.isWhitelisted(walletAddress, normalizedTo);
     if (!isWhitelisted) {
       throw new Error(`Address ${normalizedTo} is not whitelisted`);
@@ -145,7 +151,7 @@ export class WhitelistModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.executeToWhitelist(walletAddress, normalizedTo, value, data, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -170,11 +176,11 @@ export class WhitelistModuleService extends BaseModuleService {
     value: bigint
   ): Promise<{ canExecute: boolean; reason?: string }> {
     try {
-      if (!quais.isAddress(to)) {
+      if (!isAddress(to)) {
         return { canExecute: false, reason: 'Invalid address format' };
       }
 
-      const normalizedTo = quais.getAddress(to);
+      const normalizedTo = getAddress(to);
       const wallet = this.getWalletContract(walletAddress);
 
       const isModuleEnabled = await wallet.modules(CONTRACT_ADDRESSES.WHITELIST_MODULE);
@@ -215,7 +221,7 @@ export class WhitelistModuleService extends BaseModuleService {
 
     try {
       events = await module.queryFilter(filter, -5000, 'latest');
-    } catch (error: any) {
+    } catch (error) {
       if (error.message?.includes('exceeds maximum limit')) {
         try {
           events = await module.queryFilter(filter, -2000, 'latest');
@@ -231,7 +237,7 @@ export class WhitelistModuleService extends BaseModuleService {
 
     try {
       removalEvents = await module.queryFilter(removalFilter, -5000, 'latest');
-    } catch (error: any) {
+    } catch (error) {
       if (error.message?.includes('exceeds maximum limit')) {
         try {
           removalEvents = await module.queryFilter(removalFilter, -2000, 'latest');

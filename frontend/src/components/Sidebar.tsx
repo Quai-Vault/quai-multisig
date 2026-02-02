@@ -3,6 +3,7 @@ import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
 import { WalletCard } from './WalletCard';
 import { EmptyState } from './EmptyState';
+import { ThemeToggle } from './ThemeToggle';
 
 export function Sidebar() {
   const { connect, disconnect, connected, address } = useWallet();
@@ -14,14 +15,14 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-[7rem] h-[calc(100vh-7rem)] w-64 bg-vault-dark-2 border-r-2 border-dark-700 flex flex-col z-20 overflow-hidden">
+    <aside className="fixed left-0 top-[7rem] h-[calc(100vh-7rem)] w-64 bg-white dark:bg-vault-dark-2 border-r-2 border-dark-200 dark:border-dark-700 flex flex-col z-20 overflow-hidden">
 
       {/* Wallet Connect/Disconnect */}
-      <div className="px-4 py-4 border-b border-dark-700">
+      <div className="px-4 py-4 border-b border-dark-200 dark:border-dark-700">
         {connected && address ? (
           <div className="space-y-3">
-            <div className="vault-panel px-4 py-2 border border-dark-600">
-              <span className="text-base font-mono text-primary-400 font-semibold">
+            <div className="vault-panel px-4 py-2 border border-dark-300 dark:border-dark-600">
+              <span className="text-base font-mono text-primary-600 dark:text-primary-400 font-semibold">
                 {formatAddress(address)}
               </span>
             </div>
@@ -44,13 +45,13 @@ export function Sidebar() {
 
       {/* Quick Actions */}
       {connected && (
-        <div className="px-4 py-5 border-b border-dark-700">
+        <div className="px-4 py-5 border-b border-dark-200 dark:border-dark-700">
           <Link
             to="/create"
             className={`flex items-center gap-4.5 px-4 py-2.5 rounded text-base font-semibold transition-all w-full ${
               location.pathname === '/create'
-                ? 'text-primary-400 vault-text-glow bg-vault-dark-4'
-                : 'text-dark-400 hover:text-dark-200 hover:bg-vault-dark-4'
+                ? 'text-primary-600 dark:text-primary-400 vault-text-glow bg-dark-100 dark:bg-vault-dark-4'
+                : 'text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200 hover:bg-dark-100 dark:hover:bg-vault-dark-4'
             }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -65,13 +66,13 @@ export function Sidebar() {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {!connected ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-5">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-primary-600/30 mb-5">
               <svg className="w-10 h-10 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <p className="text-base text-dark-500 font-medium mb-2.5">Connect Wallet</p>
-            <p className="text-base text-dark-600 font-mono uppercase tracking-wider">
+            <p className="text-base text-dark-600 dark:text-dark-500 font-medium mb-2.5">Connect Wallet</p>
+            <p className="text-base text-dark-500 dark:text-dark-600 font-mono uppercase tracking-wider">
               To view your vaults
             </p>
           </div>
@@ -81,12 +82,12 @@ export function Sidebar() {
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
               <div className="relative inline-block h-10 w-10 animate-spin rounded-full border-2 border-solid border-primary-600 border-r-transparent"></div>
             </div>
-            <p className="mt-5 text-base text-dark-400 font-semibold">Loading vaults...</p>
+            <p className="mt-5 text-base text-dark-500 dark:text-dark-400 font-semibold">Loading vaults...</p>
           </div>
         ) : !userWallets || userWallets.length === 0 ? (
           <EmptyState
             icon={
-              <svg className="w-9 h-9 text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-9 h-9 text-dark-400 dark:text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
               </svg>
             }
@@ -102,7 +103,7 @@ export function Sidebar() {
           <div className="space-y-3">
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-4.5">
-                <h2 className="text-base font-display font-bold text-dark-200 uppercase tracking-wider">
+                <h2 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 uppercase tracking-wider">
                   Vaults
                 </h2>
                 {isRefetchingWallets && (
@@ -120,7 +121,7 @@ export function Sidebar() {
                   <div
                     key={walletAddress}
                     className={`vault-panel p-4 hover:border-primary-600/50 transition-all ${
-                      isActive ? 'border-primary-600/50 bg-vault-dark-4' : ''
+                      isActive ? 'border-primary-600/50 bg-dark-100 dark:bg-vault-dark-4' : ''
                     }`}
                   >
                     <Link
@@ -135,6 +136,11 @@ export function Sidebar() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Theme Toggle */}
+      <div className="mt-auto px-4 py-4 border-t border-dark-200 dark:border-dark-700">
+        <ThemeToggle />
       </div>
     </aside>
   );

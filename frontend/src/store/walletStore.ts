@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { WalletInfo, PendingTransaction } from '../types';
 
+// Maximum number of wallets to store in memory (prevents unbounded growth)
+const MAX_STORED_WALLETS = 100;
+
 interface WalletState {
   // Connection state
   connected: boolean;
@@ -75,6 +78,15 @@ export const useWalletStore = create<WalletState>()(
         set((state) => {
           const newMap = new Map(state.walletsInfo);
           newMap.set(walletAddress, info);
+          // Enforce max size by removing oldest entries (FIFO)
+          while (newMap.size > MAX_STORED_WALLETS) {
+            const oldestKey = newMap.keys().next().value;
+            if (oldestKey !== undefined) {
+              newMap.delete(oldestKey);
+            } else {
+              break;
+            }
+          }
           return { walletsInfo: newMap };
         }),
 
@@ -82,6 +94,15 @@ export const useWalletStore = create<WalletState>()(
         set((state) => {
           const newMap = new Map(state.pendingTransactions);
           newMap.set(walletAddress, txs);
+          // Enforce max size by removing oldest entries (FIFO)
+          while (newMap.size > MAX_STORED_WALLETS) {
+            const oldestKey = newMap.keys().next().value;
+            if (oldestKey !== undefined) {
+              newMap.delete(oldestKey);
+            } else {
+              break;
+            }
+          }
           return { pendingTransactions: newMap };
         }),
 

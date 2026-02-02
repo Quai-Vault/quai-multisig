@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { multisigService } from '../services/MultisigService';
 import { notificationManager } from './NotificationContainer';
 import { useWalletStore } from '../store/walletStore';
 import { Modal } from './Modal';
-import * as quais from 'quais';
+import { CollapsibleNotice } from './CollapsibleNotice';
+import { isAddress, formatQuai, getAddress } from 'quais';
 
 interface SocialRecoveryManagementProps {
   walletAddress: string;
@@ -13,15 +14,30 @@ interface SocialRecoveryManagementProps {
   onUpdate?: () => void;
 }
 
+// Owner input with stable ID for proper React reconciliation
+interface OwnerInput {
+  id: string;
+  value: string;
+}
+
+// Generate unique IDs for form inputs
+let ownerIdCounter = 0;
+function generateOwnerId(): string {
+  return `owner-${Date.now()}-${++ownerIdCounter}`;
+}
+
 export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpdate }: SocialRecoveryManagementProps) {
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useWalletStore();
-  
-  // Recovery initiation form state
+
+  // Recovery initiation form state with stable IDs for list items
   const [showInitiateRecovery, setShowInitiateRecovery] = useState(false);
-  const [newOwners, setNewOwners] = useState<string[]>(['']);
+  const [ownerInputs, setOwnerInputs] = useState<OwnerInput[]>([{ id: generateOwnerId(), value: '' }]);
   const [newThreshold, setNewThreshold] = useState<number>(1);
   const [errors, setErrors] = useState<string[]>([]);
+
+  // Helper to get owner values for API calls
+  const newOwners = ownerInputs.map(o => o.value);
 
   // Query recovery configuration
   const { data: recoveryConfig, isLoading: isLoadingConfig } = useQuery({
@@ -100,7 +116,7 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
         refetchRecoveries();
       }, 2000);
       setShowInitiateRecovery(false);
-      setNewOwners(['']);
+      setOwnerInputs([{ id: generateOwnerId(), value: '' }]);
       setNewThreshold(1);
       setErrors([]);
     },
@@ -166,23 +182,42 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
     },
   });
 
-  const updateNewOwner = (index: number, value: string) => {
-    const owners = [...newOwners];
-    owners[index] = value;
-    setNewOwners(owners);
+  // Revoke approval mutation (guardians only)
+  const revokeApproval = useMutation({
+    mutationFn: async (recoveryHash: string) => {
+      return await multisigService.revokeRecoveryApproval(walletAddress, recoveryHash);
+    },
+    onSuccess: () => {
+      notificationManager.add({
+        message: '✅ Approval revoked successfully',
+        type: 'success',
+      });
+      queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['recoveryApprovalStatuses'] });
+      refetchRecoveries();
+    },
+    onError: (error) => {
+      setErrors([error instanceof Error ? error.message : 'Failed to revoke approval']);
+    },
+  });
+
+  const updateNewOwner = (id: string, value: string) => {
+    setOwnerInputs(prev => prev.map(o => o.id === id ? { ...o, value } : o));
     setErrors([]);
   };
 
   const addNewOwner = () => {
-    setNewOwners([...newOwners, '']);
+    setOwnerInputs(prev => [...prev, { id: generateOwnerId(), value: '' }]);
   };
 
-  const removeNewOwner = (index: number) => {
-    const owners = newOwners.filter((_, i) => i !== index);
-    setNewOwners(owners);
-    if (newThreshold > owners.length) {
-      setNewThreshold(owners.length);
-    }
+  const removeNewOwner = (id: string) => {
+    setOwnerInputs(prev => {
+      const updated = prev.filter(o => o.id !== id);
+      if (newThreshold > updated.length) {
+        setNewThreshold(Math.max(1, updated.length));
+      }
+      return updated;
+    });
     setErrors([]);
   };
 
@@ -195,12 +230,12 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
     }
 
     for (const owner of validOwners) {
-      if (!quais.isAddress(owner.trim())) {
+      if (!isAddress(owner.trim())) {
         newErrors.push(`Invalid owner address: ${owner.substring(0, 10)}...`);
       }
     }
 
-    const normalizedOwners = validOwners.map(o => quais.getAddress(o.trim()).toLowerCase());
+    const normalizedOwners = validOwners.map(o => getAddress(o.trim()).toLowerCase());
     const uniqueOwners = new Set(normalizedOwners);
     if (uniqueOwners.size !== normalizedOwners.length) {
       newErrors.push('Duplicate owner addresses found');
@@ -248,49 +283,41 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
       size="lg"
     >
       <div className="space-y-6">
-        {/* Important Information */}
-        <div className="bg-gradient-to-r from-blue-900/90 via-blue-800/90 to-blue-900/90 border-l-4 border-blue-600 rounded-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="text-base font-semibold text-blue-200 mb-1">Recovery Process</h4>
-              <p className="text-sm text-blue-200/90 mb-2">
-                Guardians can initiate a recovery process to change the wallet's owners and threshold. After the recovery period elapses and enough guardians approve, the recovery can be executed.
-              </p>
-              {isGuardian && (
-                <p className="text-sm text-blue-200/90 font-semibold">
-                  You are a guardian and can initiate or approve recoveries.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Collapsible Notice */}
+        <CollapsibleNotice title={isGuardian ? "Recovery Process (You are a guardian)" : "Recovery Process"} variant="info">
+          <p>
+            Guardians can initiate a recovery process to change the wallet's owners and threshold. After the recovery period elapses and enough guardians approve, the recovery can be executed.
+          </p>
+          {isGuardian && (
+            <p className="mt-2 font-semibold">
+              As a guardian, you can initiate or approve recoveries.
+            </p>
+          )}
+        </CollapsibleNotice>
 
         {/* Current Configuration Summary */}
         {isLoadingConfig ? (
           <div className="text-center py-4">
             <div className="inline-block w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-2 text-sm text-dark-500">Loading configuration...</p>
+            <p className="mt-2 text-sm text-dark-400 dark:text-dark-500">Loading configuration...</p>
           </div>
         ) : recoveryConfig && recoveryConfig.guardians.length > 0 ? (
-          <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
-            <h3 className="text-sm font-mono text-dark-500 uppercase tracking-wider mb-3">Current Configuration</h3>
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
+            <h3 className="text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-3">Current Configuration</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <span className="text-dark-500">Guardians:</span>
-                <span className="ml-2 text-dark-200 font-semibold">{recoveryConfig.guardians.length}</span>
+                <span className="text-dark-400 dark:text-dark-500">Guardians:</span>
+                <span className="ml-2 text-dark-700 dark:text-dark-200 font-semibold">{recoveryConfig.guardians.length}</span>
               </div>
               <div>
-                <span className="text-dark-500">Threshold:</span>
-                <span className="ml-2 text-dark-200 font-semibold">{recoveryConfig.threshold.toString()} of {recoveryConfig.guardians.length}</span>
+                <span className="text-dark-400 dark:text-dark-500">Threshold:</span>
+                <span className="ml-2 text-dark-700 dark:text-dark-200 font-semibold">{recoveryConfig.threshold.toString()} of {recoveryConfig.guardians.length}</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
-            <p className="text-sm text-dark-400 text-center">No recovery configuration set. Please configure recovery first.</p>
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
+            <p className="text-sm text-dark-400 dark:text-dark-500 dark:text-dark-400 text-center">No recovery configuration set. Please configure recovery first.</p>
           </div>
         )}
 
@@ -298,7 +325,7 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
         {recoveryConfig && recoveryConfig.guardians.length > 0 && isGuardian && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider">Initiate Recovery</h3>
+              <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Initiate Recovery</h3>
               <button
                 onClick={() => setShowInitiateRecovery(!showInitiateRecovery)}
                 className="btn-primary text-sm px-3 py-1.5 inline-flex items-center gap-2"
@@ -312,26 +339,26 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
 
             {/* Initiate Recovery Form */}
             {showInitiateRecovery && (
-              <div className="mb-6 p-4 bg-vault-dark-4 rounded-md border border-dark-600">
-                <h4 className="text-sm font-mono text-dark-500 uppercase tracking-wider mb-3">New Recovery Configuration</h4>
+              <div className="mb-6 p-4 bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600">
+                <h4 className="text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-3">New Recovery Configuration</h4>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+                    <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                       New Owners
                     </label>
                     <div className="space-y-2">
-                      {newOwners.map((owner, index) => (
-                        <div key={index} className="flex gap-2">
+                      {ownerInputs.map((ownerInput) => (
+                        <div key={ownerInput.id} className="flex gap-2">
                           <input
                             type="text"
-                            value={owner}
-                            onChange={(e) => updateNewOwner(index, e.target.value)}
+                            value={ownerInput.value}
+                            onChange={(e) => updateNewOwner(ownerInput.id, e.target.value)}
                             placeholder="0x..."
                             className="input-field flex-1"
                           />
-                          {newOwners.length > 1 && (
+                          {ownerInputs.length > 1 && (
                             <button
-                              onClick={() => removeNewOwner(index)}
+                              onClick={() => removeNewOwner(ownerInput.id)}
                               className="btn-secondary px-3 py-2"
                               type="button"
                             >
@@ -355,7 +382,7 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+                    <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                       New Threshold
                     </label>
                     <input
@@ -403,7 +430,7 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
         {recoveryConfig && recoveryConfig.guardians.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider">Pending Recoveries</h3>
+              <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Pending Recoveries</h3>
               <button
                 onClick={() => {
                   queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
@@ -421,7 +448,7 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
             {isLoadingRecoveries ? (
               <div className="text-center py-4">
                 <div className="inline-block w-5 h-5 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-                <p className="mt-2 text-sm text-dark-500">Loading recoveries...</p>
+                <p className="mt-2 text-sm text-dark-400 dark:text-dark-500">Loading recoveries...</p>
               </div>
             ) : pendingRecoveries && pendingRecoveries.length > 0 ? (
               <div className="space-y-3">
@@ -433,14 +460,14 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
                   const hasApproved = approvalStatuses?.get(recovery.recoveryHash) === true;
                   
                   return (
-                    <div key={recovery.recoveryHash} className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
+                    <div key={recovery.recoveryHash} className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
                       <div className="space-y-3">
                         <div>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-mono text-dark-500 uppercase tracking-wider">Recovery Hash:</span>
-                            <span className="text-xs font-mono text-primary-300">{recovery.recoveryHash.slice(0, 10)}...{recovery.recoveryHash.slice(-8)}</span>
+                            <span className="text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Recovery Hash:</span>
+                            <span className="text-xs font-mono text-primary-600 dark:text-primary-300">{recovery.recoveryHash.slice(0, 10)}...{recovery.recoveryHash.slice(-8)}</span>
                           </div>
-                          <div className="text-sm text-dark-400 mb-2">
+                          <div className="text-sm text-dark-400 dark:text-dark-500 dark:text-dark-400 mb-2">
                             <div className="mb-1">
                               <strong>New Owners:</strong> {recovery.newOwners.length}
                             </div>
@@ -456,31 +483,42 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
                           </div>
                         </div>
                         <div className="flex gap-2 flex-wrap">
-                          {isGuardian && currentApprovals < requiredApprovals && (
+                          {isGuardian && !hasApproved && currentApprovals < requiredApprovals && (
                             <button
                               onClick={() => approveRecovery.mutate(recovery.recoveryHash)}
-                              disabled={approveRecovery.isPending || hasApproved || isLoadingApprovals}
-                              className={`text-sm px-3 py-1.5 inline-flex items-center gap-2 ${
-                                hasApproved
-                                  ? 'btn-secondary opacity-50 cursor-not-allowed' 
-                                  : 'btn-primary'
-                              }`}
-                              title={hasApproved ? 'You have already approved this recovery' : isLoadingApprovals ? 'Checking approval status...' : ''}
+                              disabled={approveRecovery.isPending || isLoadingApprovals}
+                              className="btn-primary text-sm px-3 py-1.5 inline-flex items-center gap-2"
+                              title={isLoadingApprovals ? 'Checking approval status...' : ''}
                             >
                               {approveRecovery.isPending ? (
                                 <>
                                   <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
                                   Approving...
                                 </>
-                              ) : hasApproved ? (
-                                <>
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  Approved
-                                </>
                               ) : (
                                 'Approve'
+                              )}
+                            </button>
+                          )}
+                          {isGuardian && hasApproved && (
+                            <button
+                              onClick={() => revokeApproval.mutate(recovery.recoveryHash)}
+                              disabled={revokeApproval.isPending}
+                              className="btn-secondary text-sm px-3 py-1.5 inline-flex items-center gap-2"
+                              title="Revoke your approval for this recovery"
+                            >
+                              {revokeApproval.isPending ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                  Revoking...
+                                </>
+                              ) : (
+                                <>
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                  Revoke Approval
+                                </>
                               )}
                             </button>
                           )}
@@ -518,8 +556,8 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
                 })}
               </div>
             ) : (
-              <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
-                <p className="text-sm text-dark-400 text-center">No pending recoveries</p>
+              <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
+                <p className="text-sm text-dark-400 dark:text-dark-500 dark:text-dark-400 text-center">No pending recoveries</p>
               </div>
             )}
           </div>

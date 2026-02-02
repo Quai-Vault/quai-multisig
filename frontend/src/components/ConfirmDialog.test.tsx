@@ -100,9 +100,11 @@ describe('ConfirmDialog', () => {
       const onClose = vi.fn();
       render(<ConfirmDialog {...defaultProps} onClose={onClose} />);
 
-      const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/80');
-      fireEvent.click(backdrop!);
+      // Uses bg-black/50 in light mode (JSDOM doesn't have dark mode enabled)
+      const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/50');
+      expect(backdrop).toBeInTheDocument();
 
+      fireEvent.click(backdrop!);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
   });

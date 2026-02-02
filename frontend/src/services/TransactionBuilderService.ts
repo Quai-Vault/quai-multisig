@@ -1,4 +1,5 @@
-import * as quais from 'quais';
+import { Interface, isAddress, isHexString, formatQuai, parseQuai, keccak256, solidityPacked } from 'quais';
+import type { Provider } from 'quais';
 import type { TransactionData, DecodedTransaction, ValidationResult } from '../types';
 
 export class TransactionBuilderService {
@@ -23,7 +24,7 @@ export class TransactionBuilderService {
     args: any[],
     value: bigint = 0n
   ): TransactionData {
-    const iface = new quais.Interface(abi);
+    const iface = new Interface(abi);
     const data = iface.encodeFunctionData(functionName, args);
 
     return {
@@ -37,7 +38,7 @@ export class TransactionBuilderService {
    * Build transaction to add an owner
    */
   buildAddOwner(newOwner: string): TransactionData {
-    const iface = new quais.Interface([
+    const iface = new Interface([
       'function addOwner(address owner)',
     ]);
 
@@ -52,7 +53,7 @@ export class TransactionBuilderService {
    * Build transaction to remove an owner
    */
   buildRemoveOwner(owner: string): TransactionData {
-    const iface = new quais.Interface([
+    const iface = new Interface([
       'function removeOwner(address owner)',
     ]);
 
@@ -67,7 +68,7 @@ export class TransactionBuilderService {
    * Build transaction to change threshold
    */
   buildChangeThreshold(newThreshold: number): TransactionData {
-    const iface = new quais.Interface([
+    const iface = new Interface([
       'function changeThreshold(uint256 threshold)',
     ]);
 
@@ -82,7 +83,7 @@ export class TransactionBuilderService {
    * Build transaction to enable a module
    */
   buildEnableModule(moduleAddress: string): TransactionData {
-    const iface = new quais.Interface([
+    const iface = new Interface([
       'function enableModule(address module)',
     ]);
 
@@ -97,7 +98,7 @@ export class TransactionBuilderService {
    * Build transaction to disable a module
    */
   buildDisableModule(moduleAddress: string): TransactionData {
-    const iface = new quais.Interface([
+    const iface = new Interface([
       'function disableModule(address module)',
     ]);
 
@@ -120,7 +121,7 @@ export class TransactionBuilderService {
     }
 
     try {
-      const iface = new quais.Interface(abi);
+      const iface = new Interface(abi);
       const decoded = iface.parseTransaction({ data });
 
       if (!decoded) {
@@ -136,7 +137,8 @@ export class TransactionBuilderService {
         })),
       };
     } catch (error) {
-      console.error('Failed to decode transaction:', error);
+      // Log without transaction data to avoid leaking sensitive information
+      console.error('Failed to decode transaction:', error instanceof Error ? error.message : 'Unknown error');
       return null;
     }
   }
@@ -148,7 +150,7 @@ export class TransactionBuilderService {
     const errors: string[] = [];
 
     // Validate address
-    if (!tx.to || !quais.isAddress(tx.to)) {
+    if (!tx.to || !isAddress(tx.to)) {
       errors.push('Invalid recipient address');
     }
 
@@ -158,7 +160,7 @@ export class TransactionBuilderService {
     }
 
     // Validate data format
-    if (tx.data && !quais.isHexString(tx.data)) {
+    if (tx.data && !isHexString(tx.data)) {
       errors.push('Invalid transaction data format');
     }
 
@@ -172,7 +174,7 @@ export class TransactionBuilderService {
    * Estimate gas for transaction
    */
   async estimateGas(
-    provider: quais.Provider,
+    provider: Provider,
     from: string,
     tx: TransactionData
   ): Promise<bigint> {
@@ -184,7 +186,8 @@ export class TransactionBuilderService {
         data: tx.data,
       });
     } catch (error) {
-      console.error('Failed to estimate gas:', error);
+      // Log without sensitive details
+      console.error('Failed to estimate gas:', error instanceof Error ? error.message : 'Unknown error');
       throw new Error('Gas estimation failed');
     }
   }
@@ -194,7 +197,7 @@ export class TransactionBuilderService {
    */
   formatTransaction(tx: TransactionData, decoded?: DecodedTransaction | null): string {
     if (!decoded || decoded.method === 'transfer') {
-      return `Transfer ${quais.formatQuai(tx.value)} QUAI to ${tx.to}`;
+      return `Transfer ${formatQuai(tx.value)} QUAI to ${tx.to}`;
     }
 
     const params = decoded.params
@@ -209,7 +212,7 @@ export class TransactionBuilderService {
    */
   parseValue(value: string): bigint {
     try {
-      return quais.parseQuai(value);
+      return parseQuai(value);
     } catch (error) {
       throw new Error('Invalid value format');
     }
@@ -219,18 +222,27 @@ export class TransactionBuilderService {
    * Format value for display
    */
   formatValue(value: bigint, decimals: number = 4): string {
-    return parseFloat(quais.formatQuai(value)).toFixed(decimals);
+    return parseFloat(formatQuai(value)).toFixed(decimals);
   }
 
   /**
-   * Build batch transaction data (for future enhancement)
+   * Build batch transaction data
+   * Note: Multicall/batch transactions are not yet supported.
+   * This method only accepts a single transaction.
+   *
+   * @throws Error if no transactions or more than one transaction provided
    */
   buildBatchTransaction(transactions: TransactionData[]): TransactionData {
-    // This would encode multiple transactions into a single multicall
-    // For now, return the first transaction
-    // TODO: Implement multicall pattern
     if (transactions.length === 0) {
       throw new Error('No transactions provided');
+    }
+
+    if (transactions.length > 1) {
+      throw new Error(
+        `Batch transactions are not yet supported. ` +
+        `Received ${transactions.length} transactions, but only 1 is allowed. ` +
+        `Please submit transactions individually.`
+      );
     }
 
     return transactions[0];
@@ -245,8 +257,8 @@ export class TransactionBuilderService {
     data: string,
     nonce: bigint
   ): string {
-    return quais.keccak256(
-      quais.solidityPacked(
+    return keccak256(
+      solidityPacked(
         ['address', 'uint256', 'bytes', 'uint256'],
         [to, value, data, nonce]
       )

@@ -60,7 +60,7 @@ export function FAQ() {
     },
     {
       question: "What if I approve a transaction by mistake?",
-      answer: "You cannot revoke an approval, but you can cancel the transaction if you're the proposer or if it has reached threshold approvals. Always verify transaction details before approving."
+      answer: "You can revoke your approval at any time before the transaction is executed. For regular multisig transactions, use the 'Revoke' button next to your approval. For social recovery approvals, guardians can also revoke their approval from the recovery management panel."
     }
   ];
 
@@ -70,7 +70,7 @@ export function FAQ() {
       <div className="mb-8">
         <Link
           to="/docs"
-          className="text-base text-primary-400 hover:text-primary-300 mb-4 inline-flex items-center gap-2 transition-colors font-semibold"
+          className="text-base text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 mb-4 inline-flex items-center gap-2 transition-colors font-semibold"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -80,7 +80,7 @@ export function FAQ() {
         <h1 className="text-2xl font-display font-bold text-gradient-red vault-text-glow mb-3">
           Frequently Asked Questions
         </h1>
-        <p className="text-lg text-dark-300 leading-relaxed">
+        <p className="text-lg text-dark-600 dark:text-dark-300 leading-relaxed">
           Common questions and answers about Quai Vault multisig wallets.
         </p>
       </div>
@@ -89,18 +89,18 @@ export function FAQ() {
       <div className="space-y-4">
         {faqs.map((faq, index) => (
           <div key={index} className="vault-panel p-6">
-            <h2 className="text-lg font-display font-bold text-dark-200 mb-3 flex items-start gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-900/50 border border-primary-700/50 flex items-center justify-center text-primary-300 font-bold text-sm mt-0.5">
+            <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-3 flex items-start gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-900/50 border border-primary-700/50 flex items-center justify-center text-primary-600 dark:text-primary-300 font-bold text-sm mt-0.5">
                 Q
               </span>
               <span>{faq.question}</span>
             </h2>
             <div className="ml-9">
               <div className="flex items-start gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-900/50 border border-primary-700/50 flex items-center justify-center text-primary-300 font-bold text-sm mt-0.5">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-900/50 border border-primary-700/50 flex items-center justify-center text-primary-600 dark:text-primary-300 font-bold text-sm mt-0.5">
                   A
                 </span>
-                <p className="text-base text-dark-300 leading-relaxed">{faq.answer}</p>
+                <p className="text-base text-dark-600 dark:text-dark-300 leading-relaxed">{faq.answer}</p>
               </div>
             </div>
           </div>
@@ -109,8 +109,8 @@ export function FAQ() {
 
       {/* Still Have Questions */}
       <div className="vault-panel p-6 mt-6">
-        <h2 className="text-lg font-display font-bold text-dark-200 mb-4">Still Have Questions?</h2>
-        <div className="space-y-3 text-base text-dark-300">
+        <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-4">Still Have Questions?</h2>
+        <div className="space-y-3 text-base text-dark-600 dark:text-dark-300">
           <p>
             Can't find what you're looking for? Here are additional resources:
           </p>
@@ -119,10 +119,10 @@ export function FAQ() {
               to="/docs/getting-started"
               className="vault-panel p-4 hover:border-primary-600/50 transition-all group"
             >
-              <h3 className="text-base font-display font-bold text-dark-200 mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 mb-2 group-hover:text-primary-600 dark:text-primary-400 transition-colors">
                 Getting Started Guide
               </h3>
-              <p className="text-sm text-dark-400">
+              <p className="text-sm text-dark-500 dark:text-dark-400">
                 Step-by-step instructions for creating your first vault
               </p>
             </Link>
@@ -132,10 +132,10 @@ export function FAQ() {
               rel="noopener noreferrer"
               className="vault-panel p-4 hover:border-primary-600/50 transition-all group"
             >
-              <h3 className="text-base font-display font-bold text-dark-200 mb-2 group-hover:text-primary-400 transition-colors">
+              <h3 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 mb-2 group-hover:text-primary-600 dark:text-primary-400 transition-colors">
                 GitHub Issues
               </h3>
-              <p className="text-sm text-dark-400">
+              <p className="text-sm text-dark-500 dark:text-dark-400">
                 Report bugs or ask questions on GitHub
               </p>
             </a>

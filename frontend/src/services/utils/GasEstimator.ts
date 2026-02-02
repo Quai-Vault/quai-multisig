@@ -37,8 +37,9 @@ export async function estimateGasWithBuffer(
 
   try {
     estimated = await contractMethod.estimateGas(...args);
-  } catch (error: any) {
-    console.warn(`  Gas estimation failed, using default:`, error);
+  } catch (error) {
+    // Log without sensitive details
+    console.warn(`  Gas estimation failed, using default:`, error instanceof Error ? error.message : 'Unknown error');
     return {
       gasLimit: opts.defaultGas,
       estimated: null,
@@ -73,7 +74,7 @@ export async function estimateGasOrThrow(
   try {
     const estimated = await contractMethod.estimateGas(...args);
     return estimated;
-  } catch (error: any) {
+  } catch (error) {
     const message = extractErrorMessage(error, contract);
     throw new Error(`Cannot ${operation}: ${message}`);
   }

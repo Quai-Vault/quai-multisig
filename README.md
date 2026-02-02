@@ -17,8 +17,9 @@ quai-multisig/
 - **Decentralized-First**: All core functionality works directly via RPC without backend dependencies
 - **Upgradeable**: Proxy pattern for future multi-shard support
 - **Modular**: Extensible module system for additional features
-- **Secure**: Built with security best practices and comprehensive testing (123 tests passing)
-- **Real-Time Updates**: Automatic polling for wallet state, balances, and transactions
+- **Secure**: Built with security best practices and comprehensive testing (123 contract tests + 315 frontend tests)
+- **Real-Time Updates**: Supabase subscriptions with polling fallback for wallet state, balances, and transactions
+- **Hybrid Data Fetching**: Indexer for fast reads, blockchain for writes, automatic fallback
 - **Transaction Management**: Propose, approve, execute, cancel, and revoke approvals
 - **Owner Management**: Add/remove owners and change approval thresholds via multisig
 - **Transaction History**: View executed and cancelled transactions with detailed decoding
@@ -101,10 +102,12 @@ npm run backend:dev
   - ProxyFactory for deterministic wallet deployment
   - Modular extension system (DailyLimit, Whitelist, SocialRecovery)
 - **Frontend**: React 18 + TypeScript + Vite
-  - Service layer with facade pattern
-  - Zustand for state management
+  - Service layer with facade pattern (MultisigService + IndexerService)
+  - Zustand for client state, React Query for server state
   - quais.js for blockchain interaction
-- **Backend** (Optional): Event indexer and WebSocket notifications
+  - Supabase for indexer integration and real-time subscriptions
+  - Zod for runtime type validation
+- **Indexer** (Optional): Supabase-based event indexer for fast queries and real-time updates
 
 See **[ARCHITECTURE.md](ARCHITECTURE.md)** for detailed diagrams and explanations.
 

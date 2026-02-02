@@ -1,6 +1,24 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
+    <!-- Theme flash prevention - must be first script -->
+    <script>
+      (function() {
+        var stored = localStorage.getItem('theme-storage');
+        var theme = 'system';
+        try {
+          var parsed = JSON.parse(stored);
+          theme = (parsed && parsed.state && parsed.state.theme) || 'system';
+        } catch(e) {}
+        var isDark = theme === 'dark' ||
+          (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
 
     <!-- Primary Meta Tags -->
@@ -26,6 +44,10 @@
     <meta name="twitter:title" content="Quai Multisig Vault - Secure Multisig Wallet for Quai Network" />
     <meta name="twitter:description" content="Decentralized multisignature wallet solution for Quai Network. Secure collaborative fund management with multi-owner approval, social recovery, and advanced security modules." />
     <meta name="twitter:image" content="/logo.svg" />
+
+    <!-- Font preconnect for faster font loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
     <!-- Favicon and Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

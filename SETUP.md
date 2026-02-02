@@ -130,8 +130,10 @@ The frontend is built with:
 - Vite for build tooling
 - Quais.js for Quai Network interaction
 - TailwindCSS with custom vault theme
-- React Query for data fetching
-- Zustand for state management
+- React Query for server state / data fetching
+- Zustand for client state management
+- Supabase for indexer integration and real-time subscriptions
+- Zod for runtime type validation
 
 ### Frontend Installation
 
@@ -151,13 +153,25 @@ cp .env.example .env
 Edit `frontend/.env` and add contract addresses:
 
 ```env
+# Contract Addresses (from deployment)
 VITE_MULTISIG_IMPLEMENTATION=0x006179ef48CDBE621C9Fb7301615daBC070A95A7
 VITE_PROXY_FACTORY=0x0008962F68a05A3dF589E965289f887484e6Ee2e
 VITE_SOCIAL_RECOVERY_MODULE=0x002C543bf327860b212548DE25DBB5fD3dA56B41
 VITE_DAILY_LIMIT_MODULE=0x0016947f85495602D3F3D2cd3f78Cf1E5DD5C79F
 VITE_WHITELIST_MODULE=0x0036fE8BAad7eBb35c453386D7740C81796161dB
+
+# Network Configuration
 VITE_RPC_URL=https://rpc.orchard.quai.network
+VITE_CHAIN_ID=9000
+
+# Indexer Configuration (Optional - enables real-time updates)
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+VITE_NETWORK_SCHEMA=testnet
+VITE_INDEXER_URL=http://localhost:3001
 ```
+
+**Note:** The indexer configuration is optional. Without it, the frontend falls back to blockchain polling for data updates.
 
 ### Run Frontend Development Server
 
@@ -244,10 +258,13 @@ quai-multisig/
 │   ├── src/
 │   │   ├── components/       # UI components
 │   │   ├── pages/            # Page components
-│   │   ├── services/         # Blockchain services
-│   │   └── hooks/            # React hooks
+│   │   ├── services/         # Blockchain & indexer services
+│   │   │   ├── core/         # Core blockchain services
+│   │   │   ├── modules/      # Module services
+│   │   │   └── indexer/      # Supabase indexer services
+│   │   └── hooks/            # React Query hooks
 │   └── package.json          # Frontend dependencies
-└── backend/                  # (Optional - not required)
+└── docs/                     # Documentation
 ```
 
 ## Next Steps

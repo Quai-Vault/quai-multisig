@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { AbiCoder, isAddress, getAddress } from 'quais';
 import type { Contract } from '../../types';
 
 /**
@@ -7,14 +7,51 @@ import type { Contract } from '../../types';
  */
 
 /**
+ * Safely cast error to an object with optional error properties
+ * Prevents runtime errors from invalid error objects
+ */
+function safeErrorObject(error: unknown): { code?: string | number; message?: string; reason?: string; data?: string } {
+  if (error === null || error === undefined) {
+    return {};
+  }
+  if (typeof error === 'object') {
+    return error as { code?: string | number; message?: string; reason?: string; data?: string };
+  }
+  if (typeof error === 'string') {
+    return { message: error };
+  }
+  return {};
+}
+
+/**
+ * Sanitize error message to remove potentially sensitive blockchain data
+ * while keeping it informative for users
+ */
+function sanitizeErrorMessage(message: string): string {
+  // Remove hex data that might be in error messages (contract state, etc.)
+  let sanitized = message.replace(/0x[a-fA-F0-9]{40,}/g, '[address]');
+
+  // Remove very long hex strings that might be calldata
+  sanitized = sanitized.replace(/0x[a-fA-F0-9]{64,}/g, '[data]');
+
+  // Truncate very long messages
+  if (sanitized.length > 200) {
+    sanitized = sanitized.substring(0, 200) + '...';
+  }
+
+  return sanitized;
+}
+
+/**
  * Check if an error indicates user rejection
  */
-export function isUserRejection(error: any): boolean {
-  if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+export function isUserRejection(error: unknown): boolean {
+  const errObj = safeErrorObject(error);
+  if (errObj.code === 'ACTION_REJECTED' || errObj.code === 4001) {
     return true;
   }
-  if (error.message) {
-    const message = error.message.toLowerCase();
+  if (errObj.message) {
+    const message = errObj.message.toLowerCase();
     return message.includes('rejected') ||
            message.includes('denied') ||
            message.includes('cancelled');
@@ -46,7 +83,7 @@ export function decodeErrorData(contract: Contract, errorData: string): string |
     // Try to decode as a plain string error message
     if (errorData.length > 138) {
       try {
-        const errorString = quais.AbiCoder.defaultAbiCoder().decode(
+        const errorString = AbiCoder.defaultAbiCoder().decode(
           ['string'],
           '0x' + errorData.slice(138)
         )[0];
@@ -64,24 +101,27 @@ export function decodeErrorData(contract: Contract, errorData: string): string |
 
 /**
  * Extract error message from various error formats
+ * Returns a sanitized message safe for display to users
  */
-export function extractErrorMessage(error: any, contract?: Contract): string {
+export function extractErrorMessage(error: unknown, contract?: Contract): string {
+  const errObj = safeErrorObject(error);
+
   // Check for explicit reason
-  if (error.reason) {
-    return error.reason;
+  if (errObj.reason) {
+    return sanitizeErrorMessage(errObj.reason);
   }
 
   // Try to decode error data
-  if (error.data && contract) {
-    const decoded = decodeErrorData(contract, error.data);
+  if (errObj.data && contract) {
+    const decoded = decodeErrorData(contract, errObj.data);
     if (decoded) {
-      return decoded;
+      return sanitizeErrorMessage(decoded);
     }
   }
 
   // Fall back to message
-  if (error.message) {
-    return error.message;
+  if (errObj.message) {
+    return sanitizeErrorMessage(errObj.message);
   }
 
   return 'Unknown error';
@@ -91,7 +131,7 @@ export function extractErrorMessage(error: any, contract?: Contract): string {
  * Format error for user display with context
  */
 export function formatTransactionError(
-  error: any,
+  error: unknown,
   operation: string,
   contract?: Contract
 ): Error {
@@ -162,7 +202,7 @@ export function validateAddress(address: string): string {
     );
   }
 
-  if (!quais.isAddress(trimmed)) {
+  if (!isAddress(trimmed)) {
     throw new Error(
       `Invalid address format: "${trimmed}". ` +
       `Addresses must be 42 characters (0x + 40 hex characters) and pass checksum validation.`
@@ -170,7 +210,7 @@ export function validateAddress(address: string): string {
   }
 
   try {
-    return quais.getAddress(trimmed);
+    return getAddress(trimmed);
   } catch (error) {
     throw new Error(
       `Invalid address format: "${trimmed}". ` +

@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { JsonRpcProvider, Contract as QuaisContract } from 'quais';
 import type { Contract, Signer, Provider } from '../../types';
 import { NETWORK_CONFIG } from '../../config/contracts';
 import MultisigWalletABI from '../../config/abi/MultisigWallet.json';
@@ -11,7 +11,7 @@ export class BaseService {
   protected signer: Signer | null = null;
 
   constructor(provider?: Provider) {
-    this.provider = provider || new quais.JsonRpcProvider(
+    this.provider = provider || new JsonRpcProvider(
       NETWORK_CONFIG.RPC_URL,
       undefined,
       { usePathing: true }
@@ -46,7 +46,7 @@ export class BaseService {
    * Get wallet contract instance
    */
   protected getWalletContract(walletAddress: string, signerOrProvider?: Signer | Provider): Contract {
-    return new quais.Contract(
+    return new QuaisContract(
       walletAddress,
       MultisigWalletABI.abi,
       signerOrProvider || this.provider

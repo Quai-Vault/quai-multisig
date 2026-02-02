@@ -88,8 +88,8 @@ describe('Modal', () => {
       const onClose = vi.fn();
       render(<Modal {...defaultProps} onClose={onClose} />);
 
-      // Find the backdrop element (first fixed div)
-      const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/80');
+      // Find the backdrop element (uses bg-black/50 in light mode)
+      const backdrop = document.querySelector('.fixed.inset-0.bg-black\\/50');
       expect(backdrop).toBeInTheDocument();
 
       fireEvent.click(backdrop!);

@@ -58,11 +58,11 @@ export function ConfirmDialog({
         <div className="flex items-start gap-4">
           <div className="flex-shrink-0">{styles.icon}</div>
           <div className="flex-1">
-            <p className="text-base text-dark-300 leading-relaxed">{message}</p>
+            <p className="text-base text-dark-600 dark:text-dark-300 leading-relaxed">{message}</p>
           </div>
         </div>
 
-        <div className="flex gap-4 justify-end pt-4 border-t border-dark-600">
+        <div className="flex gap-4 justify-end pt-4 border-t border-dark-200 dark:border-dark-600">
           <button
             onClick={onClose}
             disabled={isLoading}

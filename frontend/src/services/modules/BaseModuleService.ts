@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { Contract as QuaisContract, Interface } from 'quais';
 import type { Contract, Signer, Provider } from '../../types';
 import { BaseService } from '../core/BaseService';
 import { TransactionService } from '../core/TransactionService';
@@ -25,7 +25,7 @@ export abstract class BaseModuleService extends BaseService {
    * Get module contract instance
    */
   protected getModuleContract(signerOrProvider?: Signer | Provider): Contract {
-    return new quais.Contract(
+    return new QuaisContract(
       this.moduleAddress,
       this.moduleAbi,
       signerOrProvider || this.provider
@@ -59,7 +59,7 @@ export abstract class BaseModuleService extends BaseService {
     transactionService.setSigner(signer);
 
     // Encode the function call
-    const iface = new quais.Interface(this.moduleAbi);
+    const iface = new Interface(this.moduleAbi);
     const data = iface.encodeFunctionData(functionName, args);
 
     // Propose through multisig

@@ -1,22 +1,26 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { useMultisig } from '../hooks/useMultisig';
-import * as quais from 'quais';
+import { formatQuai } from 'quais';
 
 interface WalletCardProps {
   walletAddress: string;
   compact?: boolean;
 }
 
-export function WalletCard({ walletAddress, compact = false }: WalletCardProps) {
+function formatAddress(addr: string): string {
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+/**
+ * Memoized wallet card component to prevent unnecessary re-renders
+ * when other wallets in the list change
+ */
+export const WalletCard = memo(function WalletCard({ walletAddress, compact = false }: WalletCardProps) {
   const { walletInfo, pendingTransactions, isLoadingInfo, isRefetchingWalletInfo } = useMultisig(walletAddress);
   const [copied, setCopied] = useState(false);
 
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-
-  const copyToClipboard = async (e: React.MouseEvent) => {
+  const copyToClipboard = useCallback(async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     try {
@@ -26,14 +30,14 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
     } catch (err) {
       console.error('Failed to copy:', err);
     }
-  };
+  }, [walletAddress]);
 
   if (isLoadingInfo || !walletInfo) {
     return (
       <div className={`${compact ? 'p-4' : 'p-6'} animate-pulse`}>
-        <div className="h-4 bg-vault-dark-4 rounded w-3/4 mb-3"></div>
-        <div className="h-3 bg-vault-dark-4 rounded w-1/2 mb-2"></div>
-        <div className="h-3 bg-vault-dark-4 rounded w-1/3"></div>
+        <div className="h-4 bg-dark-200 dark:bg-vault-dark-4 rounded w-3/4 mb-3"></div>
+        <div className="h-3 bg-dark-200 dark:bg-vault-dark-4 rounded w-1/2 mb-2"></div>
+        <div className="h-3 bg-dark-200 dark:bg-vault-dark-4 rounded w-1/3"></div>
       </div>
     );
   }
@@ -46,7 +50,7 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className="w-1.5 h-1.5 rounded-full bg-primary-600 flex-shrink-0"></div>
-            <h3 className="text-base font-mono font-semibold text-primary-300 truncate">
+            <h3 className="text-base font-mono font-semibold text-primary-600 dark:text-primary-300 truncate">
               {formatAddress(walletAddress)}
             </h3>
             <button
@@ -55,7 +59,7 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
                 e.stopPropagation();
                 copyToClipboard(e);
               }}
-              className="flex-shrink-0 text-primary-600 hover:text-primary-400 text-base p-4 rounded hover:bg-vault-dark-3 transition-all"
+              className="flex-shrink-0 text-primary-600 hover:text-primary-500 dark:hover:text-primary-400 text-base p-4 rounded hover:bg-dark-100 dark:hover:bg-vault-dark-3 transition-all"
               title="Copy full address"
             >
               {copied ? (
@@ -70,7 +74,7 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
             </button>
           </div>
           {pendingCount > 0 && (
-            <span className="flex-shrink-0 inline-flex items-center px-5 py-2.5 rounded text-base font-bold bg-primary-900/50 text-primary-300 border border-primary-700/50">
+            <span className="flex-shrink-0 inline-flex items-center px-5 py-2.5 rounded text-base font-bold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-700/50">
               {pendingCount}
             </span>
           )}
@@ -79,8 +83,8 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
           <span className="text-dark-500 font-mono">
             {walletInfo.threshold}/{walletInfo.owners.length}
           </span>
-          <span className="text-primary-400 font-display font-semibold">
-            {parseFloat(quais.formatQuai(walletInfo.balance)).toFixed(2)} QUAI
+          <span className="text-primary-600 dark:text-primary-400 font-display font-semibold">
+            {parseFloat(formatQuai(walletInfo.balance)).toFixed(2)} QUAI
           </span>
         </div>
       </div>
@@ -103,12 +107,12 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-4 mb-3">
             <div className="flex-shrink-0 w-2 h-2 rounded-full bg-primary-600 animate-glow-pulse"></div>
-            <h3 className="text-lg font-mono font-bold text-primary-400 truncate group-hover:text-primary-300 transition-colors">
+            <h3 className="text-lg font-mono font-bold text-primary-600 dark:text-primary-400 truncate group-hover:text-primary-500 dark:group-hover:text-primary-300 transition-colors">
               {formatAddress(walletAddress)}
             </h3>
             <button
               onClick={copyToClipboard}
-              className="flex-shrink-0 text-primary-600 hover:text-primary-400 text-base px-4 py-2 rounded border border-primary-700/50 hover:border-primary-600 bg-vault-dark-4 hover:bg-vault-dark-3 transition-all"
+              className="flex-shrink-0 text-primary-600 hover:text-primary-500 dark:hover:text-primary-400 text-base px-4 py-2 rounded border border-primary-300 dark:border-primary-700/50 hover:border-primary-500 dark:hover:border-primary-600 bg-dark-100 dark:bg-vault-dark-4 hover:bg-dark-200 dark:hover:bg-vault-dark-3 transition-all"
               title="Copy full address"
             >
               {copied ? (
@@ -126,14 +130,14 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
             <span className="vault-badge">
               {walletInfo.owners.length} Owner{walletInfo.owners.length !== 1 ? 's' : ''}
             </span>
-            <span className="vault-badge border-primary-600/30 text-primary-400">
+            <span className="vault-badge border-primary-600/30 text-primary-600 dark:text-primary-400">
               {walletInfo.threshold}/{walletInfo.owners.length} Required
             </span>
           </div>
         </div>
         {pendingCount > 0 && (
-          <span className="flex-shrink-0 inline-flex items-center px-4 py-2 rounded-md text-base font-bold bg-primary-900/50 text-primary-300 border border-primary-700/50 shadow-red-glow">
-            <div className="w-2.5 h-2.5 rounded-full bg-primary-400 mr-2.5 animate-pulse"></div>
+          <span className="flex-shrink-0 inline-flex items-center px-4 py-2 rounded-md text-base font-bold bg-primary-100 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 border border-primary-300 dark:border-primary-700/50 shadow-red-glow">
+            <div className="w-2.5 h-2.5 rounded-full bg-primary-500 dark:bg-primary-400 mr-2.5 animate-pulse"></div>
             {pendingCount}
           </span>
         )}
@@ -148,11 +152,11 @@ export function WalletCard({ walletAddress, compact = false }: WalletCardProps) 
             )}
           </div>
           <span className="text-xl font-display font-bold text-gradient-red">
-            {parseFloat(quais.formatQuai(walletInfo.balance)).toFixed(4)}
+            {parseFloat(formatQuai(walletInfo.balance)).toFixed(4)}
             <span className="text-lg text-dark-500 ml-1">QUAI</span>
           </span>
         </div>
       </div>
     </Link>
   );
-}
+});

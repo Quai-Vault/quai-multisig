@@ -18,11 +18,23 @@ Visual guide for understanding the Quai Multisig Wallet system at a glance.
 │         ↓                  ↓                   ↓             │
 │  ┌─────────────────────────────────────────────────┐        │
 │  │        MultisigService (Facade)                 │        │
-│  │  • TransactionService                           │        │
+│  │  • TransactionService   • WalletService         │        │
+│  │  • OwnerService         • IndexerService        │        │
 │  │  • DailyLimitModuleService                      │        │
 │  │  • WhitelistModuleService                       │        │
 │  │  • SocialRecoveryModuleService                  │        │
 │  └─────────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────────┘
+                       ↓                  ↓
+┌─────────────────────────────────────────────────────────────┐
+│                      INDEXER LAYER (Optional)               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   Supabase   │  │   Real-time  │  │  PostgreSQL  │      │
+│  │    Client    │→ │ Subscriptions│→ │   Database   │      │
+│  └──────────────┘  └──────────────┘  └──────────────┘      │
+│       ↑                                                      │
+│  Reads: Fast indexed queries, Real-time updates              │
+│  Falls back to blockchain if unavailable                     │
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -155,24 +167,40 @@ Total: 6M gas                    Total: 2.2M gas
 ```
 React Components
     ↓
-Zustand Stores
+┌────────────────────────────────────┐
+│        State Management            │
+│  React Query   │   Zustand         │
+│  (server state)│   (client state)  │
+└────────────────────────────────────┘
     ↓
 MultisigService (Facade)
     ↓
-Specialized Services
-    ├─ TransactionService
-    ├─ TransactionBuilderService
-    ├─ DailyLimitModuleService
-    ├─ WhitelistModuleService
-    └─ SocialRecoveryModuleService
-    ↓
-BaseService
-    ├─ Provider (quais.JsonRpcProvider)
-    ├─ Signer (quais.Wallet)
-    └─ Contracts (quais.Contract instances)
-    ↓
-Quai Network RPC
+┌────────────────────────────────────┐
+│         Specialized Services       │
+├────────────────┬───────────────────┤
+│ Core Services  │ Indexer Services  │
+├────────────────┼───────────────────┤
+│ TransactionSvc │ IndexerService    │
+│ WalletService  │ IndexerWalletSvc  │
+│ OwnerService   │ IndexerTxSvc      │
+│ TxBuilderSvc   │ IndexerSubSvc     │
+├────────────────┼───────────────────┤
+│ Module Services│ IndexerHealthSvc  │
+├────────────────┴───────────────────┤
+│ DailyLimitModuleService            │
+│ WhitelistModuleService             │
+│ SocialRecoveryModuleService        │
+└────────────────────────────────────┘
+    ↓                   ↓
+BaseService         Supabase Client
+    ↓                   ↓
+Quai Network RPC    PostgreSQL (Indexed Data)
 ```
+
+### Data Flow Strategy
+- **Reads**: IndexerService (fast, cached) → Fallback to blockchain
+- **Writes**: Always via blockchain (TransactionService, etc.)
+- **Real-time**: Supabase subscriptions → Fallback to polling
 
 ## 📊 Data Flow Example: Send QUAI
 
@@ -191,8 +219,9 @@ Quai Network RPC
    ├─ Store: transactions[txHash] = {..., numApprovals: 0}
    └─ Event: TransactionProposed(txHash)
 
-4. FRONTEND (Polling/Events)
-   └─ Detect new transaction, update UI
+4. FRONTEND (Real-time/Polling)
+   └─ Supabase subscription detects new tx → Update UI
+   └─ (Fallback: Polling if subscription unavailable)
 
 5. USER ACTION (Approvals)
    ├─ Owner 1: Approve ✓
@@ -239,16 +268,26 @@ quai-multisig/
 │  ├─ src/
 │  │  ├─ components/                 (React components)
 │  │  ├─ services/                   (Blockchain interaction)
-│  │  │  ├─ MultisigService.ts
-│  │  │  ├─ TransactionService.ts
-│  │  │  └─ modules/
-│  │  │     ├─ DailyLimitModuleService.ts
-│  │  │     ├─ WhitelistModuleService.ts
-│  │  │     └─ SocialRecoveryModuleService.ts
+│  │  │  ├─ MultisigService.ts       (Main facade)
+│  │  │  ├─ core/                    (Core services)
+│  │  │  │  ├─ TransactionService.ts
+│  │  │  │  ├─ WalletService.ts
+│  │  │  │  └─ OwnerService.ts
+│  │  │  ├─ modules/                 (Module services)
+│  │  │  │  ├─ DailyLimitModuleService.ts
+│  │  │  │  ├─ WhitelistModuleService.ts
+│  │  │  │  └─ SocialRecoveryModuleService.ts
+│  │  │  └─ indexer/                 (Indexer services)
+│  │  │     ├─ IndexerService.ts
+│  │  │     ├─ IndexerWalletService.ts
+│  │  │     ├─ IndexerTransactionService.ts
+│  │  │     ├─ IndexerSubscriptionService.ts
+│  │  │     └─ IndexerHealthService.ts
 │  │  ├─ stores/                     (Zustand state)
+│  │  ├─ hooks/                      (React Query hooks)
 │  │  ├─ utils/                      (Utility functions)
 │  │  └─ config/                     (Contract addresses, ABIs)
-│  └─ test/                          (Frontend tests)
+│  └─ test/                          (Frontend tests - 315 passing)
 │
 └─ docs/
    ├─ ARCHITECTURE.md                (This file - full details)

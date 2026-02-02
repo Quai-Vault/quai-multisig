@@ -3,19 +3,22 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMultisig } from '../hooks/useMultisig';
 import { useWallet } from '../hooks/useWallet';
+import { useIndexerConnection } from '../hooks/useIndexerConnection';
 import { TransactionList } from '../components/TransactionList';
 import { OwnerManagement } from '../components/OwnerManagement';
 import { ModuleManagement } from '../components/ModuleManagement';
 import { SocialRecoveryManagement } from '../components/SocialRecoveryManagement';
+import { ChangeThresholdModal } from '../components/transactionModals';
 import { EmptyState } from '../components/EmptyState';
 import { getBlockRangeTimePeriod } from '../utils/blockTime';
 import { multisigService } from '../services/MultisigService';
 import { CONTRACT_ADDRESSES } from '../config/contracts';
-import * as quais from 'quais';
+import { formatQuai } from 'quais';
 
 export function WalletDetail() {
   const { address: walletAddress } = useParams<{ address: string }>();
   const { address: connectedAddress } = useWallet();
+  const { isConnected: isIndexerConnected } = useIndexerConnection();
   const {
     walletInfo,
     pendingTransactions,
@@ -27,6 +30,7 @@ export function WalletDetail() {
   } = useMultisig(walletAddress);
   const [copied, setCopied] = useState(false);
   const [showRecoveryManagement, setShowRecoveryManagement] = useState(false);
+  const [showChangeThreshold, setShowChangeThreshold] = useState(false);
 
   // Check if connected user is a Social Recovery guardian
   const { data: isGuardian } = useQuery({
@@ -73,7 +77,7 @@ export function WalletDetail() {
           <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
           <div className="relative inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
         </div>
-        <p className="mt-6 text-dark-400 font-semibold">Loading vault details...</p>
+        <p className="mt-6 text-dark-500 dark:text-dark-400 font-semibold">Loading vault details...</p>
         <p className="mt-2 text-base font-mono text-dark-600 uppercase tracking-wider">Accessing secure storage</p>
       </div>
     );
@@ -83,12 +87,12 @@ export function WalletDetail() {
     return (
       <div className="text-center py-20">
         <div className="vault-panel max-w-md mx-auto p-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
             <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-lg font-display font-bold text-dark-200 mb-2">Vault Not Found</h2>
+          <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-2">Vault Not Found</h2>
           <p className="text-dark-500">The requested vault could not be found or accessed.</p>
         </div>
       </div>
@@ -104,7 +108,7 @@ export function WalletDetail() {
       {/* Header - Compact */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-4">
-          <Link to="/" className="text-primary-400 hover:text-primary-300 transition-colors">
+          <Link to="/" className="text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
@@ -160,17 +164,17 @@ export function WalletDetail() {
                 className="group relative w-full text-left cursor-pointer"
                 title="Click to copy address"
               >
-                <div className="flex items-center gap-4 bg-vault-dark-4 px-5 py-3 rounded-md border border-dark-600 hover:border-primary-600/50 hover:bg-vault-dark-3 transition-all duration-200">
-                  <p className="text-base font-mono text-primary-300 truncate flex-1 group-hover:text-primary-200 transition-colors">
+                <div className="flex items-center gap-4 bg-dark-100 dark:bg-vault-dark-4 px-5 py-3 rounded-md border border-dark-300 dark:border-dark-600 hover:border-primary-600/50 hover:bg-dark-50 dark:hover:bg-vault-dark-3 transition-all duration-200">
+                  <p className="text-base font-mono text-primary-600 dark:text-primary-300 truncate flex-1 group-hover:text-primary-200 transition-colors">
                     {walletAddress}
                   </p>
                   <div className={`flex-shrink-0 transition-all duration-200 ${copied ? 'opacity-100' : 'opacity-40 group-hover:opacity-100'}`}>
                     {copied ? (
-                      <svg className="w-3.5 h-3.5 text-primary-400" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-3.5 h-3.5 text-primary-600 dark:text-primary-400" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     ) : (
-                      <svg className="w-3.5 h-3.5 text-primary-500 group-hover:text-primary-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3.5 h-3.5 text-primary-500 group-hover:text-primary-600 dark:text-primary-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     )}
@@ -193,19 +197,30 @@ export function WalletDetail() {
                 )}
               </div>
               <p className="text-lg font-display font-bold text-gradient-red vault-text-glow">
-                {parseFloat(quais.formatQuai(walletInfo.balance)).toFixed(4)}
-                <span className="text-base text-primary-400 ml-1">QUAI</span>
+                {parseFloat(formatQuai(walletInfo.balance)).toFixed(4)}
+                <span className="text-base text-primary-600 dark:text-primary-400 ml-1">QUAI</span>
               </p>
             </div>
             
             {/* Threshold */}
             <div>
               <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-1.5">Threshold</h3>
-                    <p className="text-lg font-semibold text-dark-200">
-                <span className="text-primary-400">{walletInfo.threshold}</span>
-                <span className="text-dark-500 mx-1">/</span>
-                <span className="text-dark-300">{walletInfo.owners.length}</span>
-              </p>
+              <div className="flex items-center gap-3">
+                <p className="text-lg font-semibold text-dark-700 dark:text-dark-200">
+                  <span className="text-primary-600 dark:text-primary-400">{walletInfo.threshold}</span>
+                  <span className="text-dark-500 mx-1">/</span>
+                  <span className="text-dark-600 dark:text-dark-300">{walletInfo.owners.length}</span>
+                </p>
+                {isOwner && (
+                  <button
+                    onClick={() => setShowChangeThreshold(true)}
+                    className="text-xs text-primary-500 hover:text-primary-400 transition-colors px-2 py-1 rounded border border-primary-600/30 hover:border-primary-600/50 bg-primary-900/20 hover:bg-primary-900/30"
+                    title="Change threshold"
+                  >
+                    Change
+                  </button>
+                )}
+              </div>
             </div>
             
             {/* Status */}
@@ -213,7 +228,7 @@ export function WalletDetail() {
               <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-1.5">Your Status</h3>
               <div className="flex flex-wrap gap-2">
                 {isOwner ? (
-                  <span className="inline-flex items-center gap-1.5 text-primary-400 text-lg font-semibold">
+                  <span className="inline-flex items-center gap-1.5 text-primary-600 dark:text-primary-400 text-lg font-semibold">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary-600"></div>
                     Owner
                   </span>
@@ -243,32 +258,34 @@ export function WalletDetail() {
         ) : (
           <div className="vault-panel p-4">
             <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-display font-bold text-dark-200">Owners</h2>
+              <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Owners</h2>
               <span className="vault-badge text-base">
                 {walletInfo.owners.length}
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-4 max-h-[300px] overflow-y-auto">
-              {walletInfo.owners.map((owner, index) => (
-                <div
-                  key={owner}
-                  className="flex items-center justify-between p-4.5 bg-vault-dark-4 rounded-md border border-dark-600 hover:border-primary-600/30 transition-all"
-                >
-                  <div className="flex items-center gap-4.5 min-w-0 flex-1">
-                    <div className="w-7 h-7 bg-gradient-to-br from-primary-700 to-primary-900 rounded-full flex items-center justify-center border border-primary-600/50 flex-shrink-0">
-                      <span className="text-base font-bold text-primary-200">
-                        {index + 1}
-                      </span>
+            <div className="max-h-[400px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {walletInfo.owners.map((owner, index) => (
+                  <div
+                    key={owner}
+                    className="flex items-center justify-between p-3 bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600 hover:border-primary-600/30 transition-all"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-6 h-6 bg-gradient-to-br from-primary-700 to-primary-900 rounded-full flex items-center justify-center border border-primary-600/50 flex-shrink-0">
+                        <span className="text-xs font-bold text-primary-200">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <span className="font-mono text-sm text-primary-600 dark:text-primary-300 truncate">{owner}</span>
                     </div>
-                    <span className="font-mono text-base text-primary-300 truncate">{owner}</span>
+                    {owner.toLowerCase() === connectedAddress?.toLowerCase() && (
+                      <span className="vault-badge text-xs border-primary-600/50 text-primary-600 dark:text-primary-400 bg-primary-900/30 ml-2 flex-shrink-0">
+                        You
+                      </span>
+                    )}
                   </div>
-                  {owner.toLowerCase() === connectedAddress?.toLowerCase() && (
-                    <span className="vault-badge text-base border-primary-600/50 text-primary-400 bg-primary-900/30 ml-2 flex-shrink-0">
-                      You
-                    </span>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -293,7 +310,7 @@ export function WalletDetail() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-display font-bold text-dark-200">Guardian Actions</h2>
+                <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Guardian Actions</h2>
                 <p className="text-base text-dark-500">You are a Social Recovery guardian for this vault</p>
               </div>
             </div>
@@ -301,8 +318,8 @@ export function WalletDetail() {
               Guardian
             </span>
           </div>
-          <div className="bg-vault-dark-4 rounded-md border border-dark-600 p-4">
-            <p className="text-base text-dark-400 mb-3">
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600 p-4">
+            <p className="text-base text-dark-500 dark:text-dark-400 mb-3">
               As a guardian, you can help recover this vault if the owners lose access.
               You can initiate recovery, approve pending recoveries, or revoke your approval.
             </p>
@@ -329,23 +346,37 @@ export function WalletDetail() {
         />
       )}
 
+      {/* Change Threshold Modal */}
+      <ChangeThresholdModal
+        isOpen={showChangeThreshold}
+        onClose={() => {
+          setShowChangeThreshold(false);
+          refresh();
+        }}
+        walletAddress={walletAddress}
+        currentThreshold={walletInfo.threshold}
+        ownerCount={walletInfo.owners.length}
+      />
+
       {/* Pending Transactions - Compact */}
       <div className="vault-panel p-4">
         <div className="flex justify-between items-center mb-3">
           <div>
             <div className="flex items-center gap-4.5">
-              <h2 className="text-lg font-display font-bold text-dark-200">Pending Transactions</h2>
+              <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Pending Transactions</h2>
               {isRefetchingPending && (
                 <div className="w-2.5 h-2.5 border border-primary-600 border-t-transparent rounded-full animate-spin"></div>
               )}
             </div>
-            <p className="text-base font-mono text-dark-600 mt-0.5">
-              Showing last {getBlockRangeTimePeriod()}
-            </p>
+            {!isIndexerConnected && (
+              <p className="text-base font-mono text-dark-600 mt-0.5">
+                Showing last {getBlockRangeTimePeriod()}
+              </p>
+            )}
           </div>
           <button
             onClick={refresh}
-            className="text-base text-primary-400 hover:text-primary-300 transition-colors font-semibold flex items-center gap-4.5 disabled:opacity-50"
+            className="text-base text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 transition-colors font-semibold flex items-center gap-4.5 disabled:opacity-50"
             disabled={isRefetchingPending}
           >
             <svg className={`w-3.5 h-3.5 ${isRefetchingPending ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -361,7 +392,7 @@ export function WalletDetail() {
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
               <div className="relative inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary-600 border-r-transparent"></div>
             </div>
-            <p className="mt-3 text-lg text-dark-400 font-semibold">Loading...</p>
+            <p className="mt-3 text-lg text-dark-500 dark:text-dark-400 font-semibold">Loading...</p>
           </div>
         ) : !pendingTransactions || pendingTransactions.length === 0 ? (
           <EmptyState

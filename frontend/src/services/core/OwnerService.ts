@@ -1,4 +1,3 @@
-import * as quais from 'quais';
 import type { Provider } from '../../types';
 import { BaseService } from './BaseService';
 import { TransactionService } from './TransactionService';
@@ -83,11 +82,6 @@ export class OwnerService extends BaseService {
         `Lower the threshold first (to ${newOwnerCount} or less) or add more owners.`
       );
     }
-
-    console.log('removeOwner transaction details:');
-    console.log('  Owner to remove:', normalizedOwner);
-    console.log('  Current owners:', currentOwnerCount);
-    console.log('  Current threshold:', currentThreshold);
 
     // Encode removeOwner function call
     const data = wallet.interface.encodeFunctionData('removeOwner', [normalizedOwner]);
@@ -196,8 +190,8 @@ export class OwnerService extends BaseService {
           }
         }
       }
-    } catch (error: any) {
-      if (error.message?.includes('already pending')) {
+    } catch (error) {
+      if (error instanceof Error && error.message?.includes('already pending')) {
         throw error;
       }
       // Continue - no pending transaction found

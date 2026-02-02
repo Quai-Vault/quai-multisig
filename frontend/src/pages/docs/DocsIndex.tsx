@@ -80,7 +80,7 @@ export function DocsIndex() {
       <div className="mb-8">
         <Link
           to="/"
-          className="text-base text-primary-400 hover:text-primary-300 mb-4 inline-flex items-center gap-2 transition-colors font-semibold"
+          className="text-base text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 mb-4 inline-flex items-center gap-2 transition-colors font-semibold"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -90,7 +90,7 @@ export function DocsIndex() {
         <h1 className="text-2xl font-display font-bold text-gradient-red vault-text-glow mb-3">
           Documentation
         </h1>
-        <p className="text-lg text-dark-300 leading-relaxed">
+        <p className="text-lg text-dark-600 dark:text-dark-300 leading-relaxed">
           Comprehensive documentation for Quai Vault multisig wallets, modules, and the frontend interface.
           Whether you're a user, developer, or security researcher, find everything you need here.
         </p>
@@ -98,7 +98,7 @@ export function DocsIndex() {
 
       {/* Quick Links */}
       <div className="vault-panel p-6 mb-6">
-        <h2 className="text-lg font-display font-bold text-dark-200 mb-4">Quick Start</h2>
+        <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-4">Quick Start</h2>
         <div className="flex flex-wrap gap-3">
           <Link
             to="/docs/getting-started"
@@ -141,17 +141,17 @@ export function DocsIndex() {
             className="vault-panel p-6 hover:border-primary-600/50 transition-all group"
           >
             <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 text-primary-500 group-hover:text-primary-400 transition-colors">
+              <div className="flex-shrink-0 text-primary-500 group-hover:text-primary-600 dark:text-primary-400 transition-colors">
                 {section.icon}
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-display font-bold text-dark-200 mb-2 group-hover:text-primary-400 transition-colors">
+                <h3 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-2 group-hover:text-primary-600 dark:text-primary-400 transition-colors">
                   {section.title}
                 </h3>
-                <p className="text-base text-dark-400 leading-relaxed mb-3">
+                <p className="text-base text-dark-500 dark:text-dark-400 leading-relaxed mb-3">
                   {section.description}
                 </p>
-                <div className="inline-flex items-center gap-2 text-sm text-primary-400 font-semibold">
+                <div className="inline-flex items-center gap-2 text-sm text-primary-600 dark:text-primary-400 font-semibold">
                   Read more
                   <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -165,15 +165,15 @@ export function DocsIndex() {
 
       {/* Additional Resources */}
       <div className="vault-panel p-6 mt-6">
-        <h2 className="text-lg font-display font-bold text-dark-200 mb-4">Additional Resources</h2>
-        <div className="space-y-3 text-base text-dark-300">
+        <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-4">Additional Resources</h2>
+        <div className="space-y-3 text-base text-dark-600 dark:text-dark-300">
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <p className="font-semibold text-dark-200 mb-1">Network Information</p>
-              <p className="text-dark-400">
+              <p className="font-semibold text-dark-700 dark:text-dark-200 mb-1">Network Information</p>
+              <p className="text-dark-500 dark:text-dark-400">
                 Quai Vault is currently deployed on the <strong>Orchard Testnet</strong>. 
                 This is an engineering testing environment - do not store significant funds.
               </p>
@@ -184,10 +184,10 @@ export function DocsIndex() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
             <div>
-              <p className="font-semibold text-dark-200 mb-1">Smart Contracts</p>
-              <p className="text-dark-400">
+              <p className="font-semibold text-dark-700 dark:text-dark-200 mb-1">Smart Contracts</p>
+              <p className="text-dark-500 dark:text-dark-400">
                 All contracts are open source and verified. Review the code, security considerations, 
-                and audit reports in the <Link to="/docs/security" className="text-primary-400 hover:text-primary-300 underline">Security</Link> section.
+                and audit reports in the <Link to="/docs/security" className="text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 underline">Security</Link> section.
               </p>
             </div>
           </div>
@@ -196,10 +196,10 @@ export function DocsIndex() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
             <div>
-              <p className="font-semibold text-dark-200 mb-1">Support</p>
-              <p className="text-dark-400">
-                Found a bug or have a question? Check the <Link to="/docs/faq" className="text-primary-400 hover:text-primary-300 underline">FAQ</Link> or 
-                open an issue on <a href="https://github.com/mpoletiek/quai-multisig" target="_blank" rel="noopener noreferrer" className="text-primary-400 hover:text-primary-300 underline">GitHub</a>.
+              <p className="font-semibold text-dark-700 dark:text-dark-200 mb-1">Support</p>
+              <p className="text-dark-500 dark:text-dark-400">
+                Found a bug or have a question? Check the <Link to="/docs/faq" className="text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 underline">FAQ</Link> or 
+                open an issue on <a href="https://github.com/mpoletiek/quai-multisig" target="_blank" rel="noopener noreferrer" className="text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 underline">GitHub</a>.
               </p>
             </div>
           </div>

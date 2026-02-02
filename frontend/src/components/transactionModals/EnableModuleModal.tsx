@@ -73,18 +73,18 @@ export function EnableModuleModal({
     >
       {!showFlow ? (
         <div className="space-y-6">
-          <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
-            <p className="text-lg text-dark-300 mb-1">
-              Enable the <strong className="text-primary-400">{moduleName}</strong> module for this vault.
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
+            <p className="text-lg text-dark-500 dark:text-dark-600 dark:text-dark-300 mb-1">
+              Enable the <strong className="text-primary-600 dark:text-primary-400">{moduleName}</strong> module for this vault.
             </p>
-            <p className="text-base font-mono text-dark-600 uppercase tracking-wider mt-2">
+            <p className="text-base font-mono text-dark-500 dark:text-dark-600 uppercase tracking-wider mt-2">
               This requires multisig approval
             </p>
           </div>
           
-          <div className="bg-vault-dark-4 rounded-md p-4 border border-dark-600">
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
             <p className="text-base font-mono text-dark-500 uppercase tracking-wider mb-2">Module Address</p>
-            <p className="text-base font-mono text-primary-300 break-all">{moduleAddress}</p>
+            <p className="text-base font-mono text-primary-600 dark:text-primary-300 break-all">{moduleAddress}</p>
           </div>
 
           <div className="bg-yellow-900/20 rounded-md p-4 border border-yellow-700/30">

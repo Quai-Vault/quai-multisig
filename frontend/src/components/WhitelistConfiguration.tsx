@@ -4,7 +4,8 @@ import { multisigService } from '../services/MultisigService';
 import { notificationManager } from './NotificationContainer';
 import { EmptyState } from './EmptyState';
 import { Modal } from './Modal';
-import * as quais from 'quais';
+import { CollapsibleNotice } from './CollapsibleNotice';
+import { formatQuai, isAddress, getAddress, parseQuai } from 'quais';
 
 interface WhitelistConfigurationProps {
   walletAddress: string;
@@ -36,7 +37,7 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
     onSuccess: (txHash, variables) => {
       const limitText = variables.limit === 0n
         ? 'unlimited'
-        : `${parseFloat(quais.formatQuai(variables.limit)).toFixed(4)} QUAI`;
+        : `${parseFloat(formatQuai(variables.limit)).toFixed(4)} QUAI`;
       const shortAddress = `${variables.address.slice(0, 6)}...${variables.address.slice(-4)}`;
       const shortHash = `${txHash.slice(0, 10)}...${txHash.slice(-8)}`;
 
@@ -100,7 +101,7 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
 
     if (!newAddress.trim()) {
       newErrors.push('Address is required');
-    } else if (!quais.isAddress(newAddress.trim())) {
+    } else if (!isAddress(newAddress.trim())) {
       newErrors.push('Invalid address format');
     }
 
@@ -112,8 +113,8 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
     }
 
     // Check if address is already whitelisted
-    if (newAddress.trim() && quais.isAddress(newAddress.trim())) {
-      const normalized = quais.getAddress(newAddress.trim()).toLowerCase();
+    if (newAddress.trim() && isAddress(newAddress.trim())) {
+      const normalized = getAddress(newAddress.trim()).toLowerCase();
       const isAlreadyWhitelisted = whitelistedAddresses?.some(
         (entry) => entry.address.toLowerCase() === normalized
       );
@@ -131,10 +132,10 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
       return;
     }
 
-    const normalizedAddress = quais.getAddress(newAddress.trim());
+    const normalizedAddress = getAddress(newAddress.trim());
     const limitValue = newLimit.trim() === '' || newLimit.trim() === '0'
       ? 0n
-      : quais.parseQuai(newLimit.trim());
+      : parseQuai(newLimit.trim());
 
     proposeAddToWhitelist.mutate({ address: normalizedAddress, limit: limitValue });
   };
@@ -150,7 +151,7 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
     if (limit === 0n) {
       return 'Unlimited';
     }
-    return `${parseFloat(quais.formatQuai(limit)).toFixed(4)} QUAI`;
+    return `${parseFloat(formatQuai(limit)).toFixed(4)} QUAI`;
   };
 
   return (
@@ -161,45 +162,30 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
       size="lg"
     >
       <div className="space-y-6">
-          {/* Multisig Approval Notice */}
-        <div className="bg-gradient-to-r from-green-900/90 via-green-800/90 to-green-900/90 border-l-4 border-green-600 rounded-md p-4">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <h4 className="text-base font-semibold text-green-200 mb-1">Multisig Approval Required</h4>
-            <p className="text-sm text-green-200/90">
-              Changes to the whitelist now require multisig approval. When you add or remove addresses, a proposal will be created that other owners must approve before it takes effect.
+        {/* Collapsible Notices */}
+        <div className="space-y-2">
+          <CollapsibleNotice title="Multisig Approval Required" variant="success">
+            <p>
+              Changes to the whitelist require multisig approval. When you add or remove addresses, a proposal will be created that other owners must approve before it takes effect.
             </p>
-          </div>
-          </div>
-        </div>
+          </CollapsibleNotice>
 
-        {/* Important Information */}
-        <div className="bg-gradient-to-r from-blue-900/90 via-blue-800/90 to-blue-900/90 border-l-4 border-blue-600 rounded-md p-4">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <div>
-            <h4 className="text-base font-semibold text-blue-200 mb-1">How Whitelist Works</h4>
-            <p className="text-sm text-blue-200/90 mb-2">
+          <CollapsibleNotice title="How Whitelist Works" variant="info">
+            <p className="mb-2">
               Whitelisted addresses can receive funds <strong>without requiring multisig approvals</strong> when using this frontend. The whitelist is enforced at the <strong>smart contract level</strong>, so it cannot be bypassed by interacting with the contract directly.
             </p>
-            <p className="text-sm text-blue-200/90">
+            <p>
               <strong>Important:</strong> Only use whitelist for trusted addresses. Once whitelisted, any owner can send funds to that address without approval from other owners.
             </p>
-          </div>
-          </div>
+          </CollapsibleNotice>
         </div>
 
         {/* Add Address Form */}
-        <div className="p-4 bg-vault-dark-4 rounded-md border border-dark-600">
-        <h3 className="text-base font-semibold text-dark-200 mb-3">Propose Add Address to Whitelist</h3>
+        <div className="p-4 bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600">
+        <h3 className="text-base font-semibold text-dark-700 dark:text-dark-200 mb-3">Propose Add Address to Whitelist</h3>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+            <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
               Address
             </label>
             <input
@@ -214,7 +200,7 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
             />
           </div>
           <div>
-            <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+            <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
               Limit (QUAI) - Leave empty or 0 for unlimited
             </label>
             <input
@@ -266,12 +252,12 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
               <div className="relative inline-block h-8 w-8 animate-spin rounded-full border-2 border-solid border-primary-600 border-r-transparent"></div>
             </div>
-            <p className="mt-4 text-base text-dark-400 font-semibold">Loading whitelist...</p>
+            <p className="mt-4 text-base text-dark-400 dark:text-dark-500 dark:text-dark-400 font-semibold">Loading whitelist...</p>
           </div>
         ) : !whitelistedAddresses || whitelistedAddresses.length === 0 ? (
             <EmptyState
             icon={
-              <svg className="w-6 h-6 text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-6 h-6 text-dark-500 dark:text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             }
@@ -284,15 +270,15 @@ export function WhitelistConfiguration({ walletAddress, onUpdate }: WhitelistCon
             {whitelistedAddresses.map((entry) => (
               <div
                 key={entry.address}
-                className="flex items-center justify-between p-3 bg-vault-dark-4 rounded-md border border-dark-600 hover:border-primary-600/30 transition-all"
+                className="flex items-center justify-between p-3 bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600 hover:border-primary-600/30 transition-all"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-1">
                     <div className="w-2 h-2 rounded-full bg-primary-600"></div>
-                    <span className="text-base font-mono text-primary-300 truncate">{entry.address}</span>
+                    <span className="text-base font-mono text-primary-600 dark:text-primary-300 truncate">{entry.address}</span>
                   </div>
-                  <p className="text-sm text-dark-500">
-                    Limit: <span className="font-semibold text-dark-300">{formatLimit(entry.limit)}</span>
+                  <p className="text-sm text-dark-400 dark:text-dark-500">
+                    Limit: <span className="font-semibold text-dark-500 dark:text-dark-600 dark:text-dark-300">{formatLimit(entry.limit)}</span>
                   </p>
                 </div>
                 <button

@@ -57,7 +57,6 @@ export function extractIpfsHashFromBytecode(bytecode: string): string | null {
     const hashBytes = hexToBytes(hashHex);
     const ipfsHash = base58Encode(hashBytes);
 
-    console.log('Extracted IPFS hash from bytecode:', ipfsHash);
     return ipfsHash;
   } catch (error) {
     console.error('Failed to extract IPFS hash:', error);

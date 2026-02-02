@@ -29,7 +29,7 @@ export function ExplorerLink({
       onClick={handleClick}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-2 text-primary-400 hover:text-primary-300 transition-colors ${className}`}
+      className={`inline-flex items-center gap-2 text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors ${className}`}
     >
       {showIcon && (
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

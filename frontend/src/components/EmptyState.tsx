@@ -22,7 +22,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   const defaultIcon = (
     <svg
-      className="w-12 h-12 text-dark-600"
+      className="w-12 h-12 text-dark-400 dark:text-dark-600"
       fill="none"
       viewBox="0 0 24 24"
       stroke="currentColor"
@@ -48,10 +48,10 @@ export function EmptyState({
 
   return (
     <div className={`text-center py-12 ${className}`}>
-      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vault-dark-4 border-2 border-dark-600 mb-4">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-dark-300 dark:border-dark-600 mb-4">
         {icon || defaultIcon}
       </div>
-      <h3 className="text-lg font-display font-bold text-dark-200 mb-2">{title}</h3>
+      <h3 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-2">{title}</h3>
       {description && (
         <p className="text-base text-dark-500 mb-6 max-w-md mx-auto leading-relaxed">
           {description}

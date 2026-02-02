@@ -4,7 +4,7 @@ import { useWallet } from '../hooks/useWallet';
 import { WalletCreationFlow } from '../components/WalletCreationFlow';
 import type { DeploymentProgress } from '../components/WalletCreationFlow';
 import { multisigService } from '../services/MultisigService';
-import * as quais from 'quais';
+import { isAddress } from 'quais';
 
 export function CreateWallet() {
   const navigate = useNavigate();
@@ -48,7 +48,7 @@ export function CreateWallet() {
 
     // Validate addresses
     for (const owner of validOwners) {
-      if (!quais.isAddress(owner)) {
+      if (!isAddress(owner)) {
         const ownerStr = String(owner);
         newErrors.push(`Invalid address: ${ownerStr.substring(0, 10)}...`);
       }
@@ -113,7 +113,7 @@ export function CreateWallet() {
   if (!connected) {
     return (
       <div className="text-center py-20">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
           <svg
             className="mx-auto h-10 w-10 text-primary-600"
             fill="none"
@@ -131,7 +131,7 @@ export function CreateWallet() {
         <h2 className="text-xl font-display font-bold text-gradient-red vault-text-glow mb-3">
           Connect Your Wallet
         </h2>
-        <p className="text-dark-400 font-medium mb-2">
+        <p className="text-dark-500 dark:text-dark-400 font-medium mb-2">
           Please connect your wallet to create a multisig vault
         </p>
         <p className="text-base font-mono text-dark-600 uppercase tracking-wider">
@@ -169,7 +169,7 @@ export function CreateWallet() {
             <label className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-2">
               Owners
             </label>
-            <p className="text-lg text-dark-400">
+            <p className="text-lg text-dark-500 dark:text-dark-400">
               Add the addresses that will be able to approve and execute transactions
             </p>
           </div>
@@ -178,8 +178,8 @@ export function CreateWallet() {
             {owners.map((owner, index) => (
               <div key={index} className="flex gap-4">
                 <div className="flex-1 relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-vault-dark-4 border border-dark-600 flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-bold text-primary-400">{index + 1}</span>
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-dark-100 dark:bg-vault-dark-4 border border-dark-300 dark:border-dark-600 flex items-center justify-center flex-shrink-0">
+                    <span className="text-base font-bold text-primary-600 dark:text-primary-400">{index + 1}</span>
                   </div>
                   <input
                     type="text"
@@ -193,7 +193,7 @@ export function CreateWallet() {
                   <button
                     type="button"
                     onClick={() => removeOwner(index)}
-                    className="px-4 py-2 text-lg font-semibold text-primary-500 hover:text-primary-400 transition-colors border border-primary-700/50 hover:border-primary-600 rounded-lg bg-vault-dark-4 hover:bg-vault-dark-3"
+                    className="px-4 py-2 text-lg font-semibold text-primary-500 hover:text-primary-600 dark:text-primary-400 transition-colors border border-primary-700/50 hover:border-primary-600 rounded-lg bg-dark-100 dark:bg-vault-dark-4 hover:bg-dark-50 dark:hover:bg-vault-dark-3"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -207,7 +207,7 @@ export function CreateWallet() {
           <button
             type="button"
             onClick={addOwner}
-            className="mt-4 inline-flex items-center gap-4 text-lg font-semibold text-primary-400 hover:text-primary-300 transition-colors px-4 py-2 rounded-lg border border-primary-700/50 hover:border-primary-600 bg-vault-dark-4 hover:bg-vault-dark-3"
+            className="mt-4 inline-flex items-center gap-4 text-lg font-semibold text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors px-4 py-2 rounded-lg border border-primary-700/50 hover:border-primary-600 bg-dark-100 dark:bg-vault-dark-4 hover:bg-dark-50 dark:hover:bg-vault-dark-3"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -222,7 +222,7 @@ export function CreateWallet() {
             <label className="block text-base font-mono text-dark-500 uppercase tracking-wider mb-2">
               Required Approvals (Threshold)
             </label>
-            <p className="text-lg text-dark-400">
+            <p className="text-lg text-dark-500 dark:text-dark-400">
               Number of owner approvals required to execute a transaction
             </p>
           </div>
@@ -236,19 +236,19 @@ export function CreateWallet() {
               onChange={(e) => setThreshold(parseInt(e.target.value) || 1)}
               className="input-field w-24"
             />
-            <span className="text-lg font-mono text-dark-400">
+            <span className="text-lg font-mono text-dark-500 dark:text-dark-400">
               of {owners.filter(o => o.trim() !== '').length} owner{owners.filter(o => o.trim() !== '').length !== 1 ? 's' : ''}
             </span>
           </div>
           
           {owners.filter(o => o.trim() !== '').length > 0 && (
-            <div className="mt-4 bg-vault-dark-4 rounded-md p-4 border border-dark-600">
+            <div className="mt-4 bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 border border-dark-300 dark:border-dark-600">
               <div className="flex items-center justify-between text-lg">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Current Configuration</span>
-                <span className="text-dark-200 font-semibold">
-                  <span className="text-primary-400">{threshold}</span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">
+                  <span className="text-primary-600 dark:text-primary-400">{threshold}</span>
                   <span className="text-dark-500 mx-2">of</span>
-                  <span className="text-dark-300">{owners.filter(o => o.trim() !== '').length}</span>
+                  <span className="text-dark-600 dark:text-dark-300">{owners.filter(o => o.trim() !== '').length}</span>
                 </span>
               </div>
             </div>
@@ -269,7 +269,7 @@ export function CreateWallet() {
                 <ul className="space-y-1 text-lg text-primary-200">
                   {errors.map((error, index) => (
                     <li key={index} className="flex items-start gap-4">
-                      <span className="text-primary-400 mt-0.5">•</span>
+                      <span className="text-primary-600 dark:text-primary-400 mt-0.5">•</span>
                       <span className="font-medium">{error}</span>
                     </li>
                   ))}

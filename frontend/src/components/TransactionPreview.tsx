@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { decodeTransaction } from '../utils/transactionDecoder';
 import { transactionBuilderService } from '../services/TransactionBuilderService';
 import { multisigService } from '../services/MultisigService';
-import * as quais from 'quais';
+import { isAddress, Contract, Interface } from 'quais';
 import MultisigWalletABI from '../config/abi/MultisigWallet.json';
 
 interface TransactionPreviewProps {
@@ -33,7 +33,7 @@ export function TransactionPreview({
 
   useEffect(() => {
     const estimateGas = async () => {
-      if (!walletAddress || !to.trim() || !quais.isAddress(to)) {
+      if (!walletAddress || !to.trim() || !isAddress(to)) {
         return;
       }
 
@@ -43,7 +43,8 @@ export function TransactionPreview({
         const normalizedData = (data || '0x').trim();
 
         // Try to estimate gas for the transaction
-        const wallet = multisigService.getWalletContract(walletAddress);
+        const provider = multisigService.wallet.getProvider();
+        const wallet = new Contract(walletAddress, MultisigWalletABI.abi, provider);
         if (wallet) {
           try {
             // Estimate gas for proposeTransaction
@@ -72,7 +73,7 @@ export function TransactionPreview({
     // Try to decode contract call data
     if (data && data !== '0x' && data.length > 2) {
       try {
-        const iface = new quais.Interface(MultisigWalletABI.abi);
+        const iface = new Interface(MultisigWalletABI.abi);
         try {
           const decoded = iface.parseTransaction({ data });
           setDecodedCall(decoded);
@@ -106,40 +107,40 @@ export function TransactionPreview({
       </div>
 
       {/* Transaction Details */}
-      <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600 space-y-4">
+      <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600 space-y-4">
         <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
-        
+
         <div className="space-y-3">
           <div className="flex justify-between items-start">
             <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
-            <span className="text-primary-300 font-mono break-all text-right max-w-xs">
+            <span className="text-primary-600 dark:text-primary-300 font-mono break-all text-right max-w-xs">
               {to || '-'}
             </span>
           </div>
 
           <div className="flex justify-between items-center">
             <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
-            <span className="text-dark-200 font-semibold">
-              {value || '0'} <span className="text-primary-400">QUAI</span>
+            <span className="text-dark-700 dark:text-dark-200 font-semibold">
+              {value || '0'} <span className="text-primary-600 dark:text-primary-400">QUAI</span>
             </span>
           </div>
 
           {decoded.details && (
             <div className="flex justify-between items-center">
               <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Operation:</span>
-              <span className="text-dark-200 font-semibold">{decoded.details}</span>
+              <span className="text-dark-700 dark:text-dark-200 font-semibold">{decoded.details}</span>
             </div>
           )}
 
           {decodedCall && (
-            <div className="pt-3 border-t border-dark-600">
+            <div className="pt-3 border-t border-dark-200 dark:border-dark-600">
               <div className="text-base font-mono text-dark-500 uppercase tracking-wider mb-2">Function Call:</div>
-              <div className="bg-vault-dark-3 rounded p-3 font-mono text-sm text-dark-300">
-                <div className="text-primary-400 mb-1">{decodedCall.name}</div>
+              <div className="bg-dark-200 dark:bg-vault-dark-3 rounded p-3 font-mono text-sm text-dark-600 dark:text-dark-300">
+                <div className="text-primary-600 dark:text-primary-400 mb-1">{decodedCall.name}</div>
                 {decodedCall.args && decodedCall.args.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {decodedCall.args.map((arg: any, index: number) => (
-                      <div key={index} className="text-dark-400">
+                      <div key={index} className="text-dark-500 dark:text-dark-400">
                         <span className="text-dark-500">arg{index}:</span> {String(arg)}
                       </div>
                     ))}
@@ -150,17 +151,17 @@ export function TransactionPreview({
           )}
 
           {data && data !== '0x' && !decodedCall && (
-            <div className="pt-3 border-t border-dark-600">
+            <div className="pt-3 border-t border-dark-200 dark:border-dark-600">
               <div className="text-base font-mono text-dark-500 uppercase tracking-wider mb-2">Call Data:</div>
-              <div className="bg-vault-dark-3 rounded p-3 font-mono text-xs text-dark-400 break-all">
+              <div className="bg-dark-200 dark:bg-vault-dark-3 rounded p-3 font-mono text-xs text-dark-500 dark:text-dark-400 break-all">
                 {data.length > 100 ? `${data.slice(0, 100)}...` : data}
               </div>
             </div>
           )}
 
-          <div className="flex justify-between items-center pt-3 border-t border-dark-600">
+          <div className="flex justify-between items-center pt-3 border-t border-dark-200 dark:border-dark-600">
             <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Gas Estimate:</span>
-            <span className="text-dark-200 font-semibold">
+            <span className="text-dark-700 dark:text-dark-200 font-semibold">
               {isEstimatingGas ? (
                 <span className="text-dark-500">Estimating...</span>
               ) : (
@@ -174,9 +175,9 @@ export function TransactionPreview({
       {/* Execution Method */}
       {(isWhitelisted || canUseDailyLimit) && (
         <div className={`rounded-md p-4 border-l-4 ${
-          isWhitelisted 
-            ? 'bg-gradient-to-r from-green-900/90 via-green-800/90 to-green-900/90 border-green-600'
-            : 'bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-yellow-600'
+          isWhitelisted
+            ? 'bg-gradient-to-r from-green-100 via-green-50 to-green-100 dark:from-green-900/90 dark:via-green-800/90 dark:to-green-900/90 border-green-600'
+            : 'bg-gradient-to-r from-yellow-100 via-yellow-50 to-yellow-100 dark:from-yellow-900/90 dark:via-yellow-800/90 dark:to-yellow-900/90 border-yellow-600'
         }`}>
           <div className="flex items-start gap-3">
             <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -188,12 +189,12 @@ export function TransactionPreview({
             </svg>
             <div>
               <h4 className={`text-base font-semibold mb-1 ${
-                isWhitelisted ? 'text-green-200' : 'text-yellow-200'
+                isWhitelisted ? 'text-green-800 dark:text-green-200' : 'text-yellow-800 dark:text-yellow-200'
               }`}>
                 {isWhitelisted ? 'Whitelisted Address' : 'Daily Limit'}
               </h4>
               <p className={`text-sm ${
-                isWhitelisted ? 'text-green-200/90' : 'text-yellow-200/90'
+                isWhitelisted ? 'text-green-700 dark:text-green-200/90' : 'text-yellow-700 dark:text-yellow-200/90'
               }`}>
                 {isWhitelisted
                   ? 'This transaction will execute immediately without requiring approvals.'
@@ -206,14 +207,14 @@ export function TransactionPreview({
 
       {/* Warning for contract calls */}
       {data && data !== '0x' && !isWhitelisted && !canUseDailyLimit && (
-        <div className="bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-4">
+        <div className="bg-gradient-to-r from-yellow-100 via-yellow-50 to-yellow-100 dark:from-yellow-900/90 dark:via-yellow-800/90 dark:to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-4">
           <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
             <div>
-              <h4 className="text-base font-semibold text-yellow-200 mb-1">Contract Call</h4>
-              <p className="text-sm text-yellow-200/90">
+              <h4 className="text-base font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Contract Call</h4>
+              <p className="text-sm text-yellow-700 dark:text-yellow-200/90">
                 You are calling a smart contract. Make sure you trust the contract and understand what it does.
               </p>
             </div>
@@ -222,7 +223,7 @@ export function TransactionPreview({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-4 pt-4 border-t border-dark-600">
+      <div className="flex gap-4 pt-4 border-t border-dark-200 dark:border-dark-600">
         <button
           onClick={onCancel}
           className="btn-secondary flex-1"

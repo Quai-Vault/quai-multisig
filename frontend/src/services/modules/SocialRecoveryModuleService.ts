@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { getAddress } from 'quais';
 import type { Provider } from '../../types';
 import { CONTRACT_ADDRESSES } from '../../config/contracts';
 import { BaseModuleService } from './BaseModuleService';
@@ -155,7 +155,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     newThreshold: number
   ): Promise<string> {
     const module = this.getModuleContract();
-    const normalizedOwners = newOwners.map(addr => quais.getAddress(addr));
+    const normalizedOwners = newOwners.map(addr => getAddress(addr));
     return await module.getRecoveryHashForCurrentNonce(walletAddress, normalizedOwners, newThreshold);
   }
 
@@ -183,6 +183,13 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     newThreshold: number
   ): Promise<string> {
     const signer = this.requireSigner();
+    const signerAddress = await signer.getAddress();
+
+    // Pre-check: verify the signer is a guardian before attempting transaction
+    const isGuardian = await this.isGuardian(walletAddress, signerAddress);
+    if (!isGuardian) {
+      throw new Error('Only guardians can initiate recovery. You are not a guardian for this wallet.');
+    }
 
     const normalizedOwners = newOwners.map(addr => validateAddress(addr));
 
@@ -211,7 +218,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.initiateRecovery(walletAddress, normalizedOwners, newThreshold, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -250,8 +257,9 @@ export class SocialRecoveryModuleService extends BaseModuleService {
       if (hasApproved) {
         throw new Error('You have already approved this recovery');
       }
-    } catch (error: any) {
-      if (error.message?.includes('cancelled') || error.message?.includes('already approved')) {
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : '';
+      if (errMsg.includes('cancelled') || errMsg.includes('already approved')) {
         throw error;
       }
     }
@@ -272,7 +280,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.approveRecovery(walletAddress, recoveryHash, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -308,7 +316,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.executeRecovery(walletAddress, recoveryHash, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -344,7 +352,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.cancelRecovery(walletAddress, recoveryHash, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -396,7 +404,7 @@ export class SocialRecoveryModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.revokeRecoveryApproval(walletAddress, recoveryHash, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }
@@ -421,8 +429,9 @@ export class SocialRecoveryModuleService extends BaseModuleService {
 
     try {
       events = await module.queryFilter(filter, -5000, 'latest');
-    } catch (error: any) {
-      if (error.message?.includes('exceeds maximum limit')) {
+    } catch (error) {
+      const errMsg = error instanceof Error ? error.message : '';
+      if (errMsg.includes('exceeds maximum limit')) {
         try {
           events = await module.queryFilter(filter, -2000, 'latest');
         } catch {

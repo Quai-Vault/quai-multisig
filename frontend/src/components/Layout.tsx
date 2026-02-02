@@ -4,6 +4,8 @@ import { useWalletStore } from '../store/walletStore';
 import { Sidebar } from './Sidebar';
 import { DocsSidebar } from './DocsSidebar';
 import { NotificationContainer } from './NotificationContainer';
+import { SyncStatusBadge } from './SyncStatusBadge';
+import { Logo } from './Logo';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,11 +16,11 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen bg-vault-black relative">
+    <div className="min-h-screen bg-dark-50 dark:bg-vault-black relative">
       {/* Animated background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-600/5 rounded-full blur-3xl animate-glow-slow"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary-600/5 rounded-full blur-3xl animate-glow-slow" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-600/3 dark:bg-primary-600/5 rounded-full blur-3xl animate-glow-slow"></div>
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary-600/3 dark:bg-primary-600/5 rounded-full blur-3xl animate-glow-slow" style={{ animationDelay: '1s' }}></div>
       </div>
 
       {/* Warning Banner - Engineering Testing */}
@@ -45,7 +47,7 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Top Navbar - Full width, branding and minimal nav */}
-      <header className="fixed top-[3.5rem] left-0 right-0 h-14 vault-panel border-b-2 border-dark-700 z-30">
+      <header className="fixed top-[3.5rem] left-0 right-0 h-14 vault-panel border-b-2 border-dark-200 dark:border-dark-700 z-30">
         <nav className="h-full px-6">
           <div className="flex justify-between h-full items-center">
             <div className="flex items-center gap-8">
@@ -55,11 +57,7 @@ export function Layout({ children }: LayoutProps) {
               >
                 <div className="relative flex items-center justify-center w-9 h-9">
                   <div className="absolute inset-0 bg-primary-600/20 blur-lg group-hover:bg-primary-600/30 transition-all rounded-full"></div>
-                  <img
-                    src="/logo.svg"
-                    alt="Quai Vault Logo"
-                    className="relative w-9 h-9 transition-transform group-hover:scale-110"
-                  />
+                  <Logo className="relative w-9 h-9 transition-transform group-hover:scale-110" />
                 </div>
                 <div className="flex items-center">
                   <div className="relative">
@@ -68,7 +66,7 @@ export function Layout({ children }: LayoutProps) {
                       QUAI VAULT
                     </span>
                   </div>
-                  <span className="ml-2 text-base font-mono text-dark-500 uppercase tracking-wider">
+                  <span className="ml-2 text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">
                     Multisig
                   </span>
                 </div>
@@ -78,8 +76,8 @@ export function Layout({ children }: LayoutProps) {
                   to="/"
                   className={`inline-flex items-center px-4 py-1.5 rounded text-base font-semibold transition-all ${
                     location.pathname === '/'
-                      ? 'text-primary-400 vault-text-glow'
-                      : 'text-dark-400 hover:text-dark-200'
+                      ? 'text-primary-500 dark:text-primary-400 vault-text-glow'
+                      : 'text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200'
                   }`}
                 >
                   Home
@@ -88,8 +86,8 @@ export function Layout({ children }: LayoutProps) {
                   to="/about"
                   className={`inline-flex items-center px-4 py-1.5 rounded text-base font-semibold transition-all ${
                     location.pathname === '/about'
-                      ? 'text-primary-400 vault-text-glow'
-                      : 'text-dark-400 hover:text-dark-200'
+                      ? 'text-primary-500 dark:text-primary-400 vault-text-glow'
+                      : 'text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200'
                   }`}
                 >
                   About
@@ -98,8 +96,8 @@ export function Layout({ children }: LayoutProps) {
                   to="/docs"
                   className={`inline-flex items-center px-4 py-1.5 rounded text-base font-semibold transition-all ${
                     location.pathname.startsWith('/docs')
-                      ? 'text-primary-400 vault-text-glow'
-                      : 'text-dark-400 hover:text-dark-200'
+                      ? 'text-primary-500 dark:text-primary-400 vault-text-glow'
+                      : 'text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200'
                   }`}
                 >
                   Docs
@@ -108,7 +106,7 @@ export function Layout({ children }: LayoutProps) {
                   href="https://github.com/mpoletiek/quai-multisig"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-1.5 rounded text-base font-semibold text-dark-400 hover:text-dark-200 transition-all"
+                  className="inline-flex items-center px-4 py-1.5 rounded text-base font-semibold text-dark-500 dark:text-dark-400 hover:text-dark-700 dark:hover:text-dark-200 transition-all"
                   title="View on GitHub"
                 >
                   <svg className="w-5 h-5 mr-1.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -118,6 +116,7 @@ export function Layout({ children }: LayoutProps) {
                 </a>
               </div>
             </div>
+            <SyncStatusBadge />
           </div>
         </nav>
       </header>
@@ -165,32 +164,28 @@ export function Layout({ children }: LayoutProps) {
       <NotificationContainer />
 
       {/* Footer */}
-      <footer className={`relative z-10 vault-panel border-t-2 border-dark-700 ${location.pathname.startsWith('/docs') ? 'ml-64' : 'ml-64'}`}>
+      <footer className={`relative z-10 vault-panel border-t-2 border-dark-200 dark:border-dark-700 ${location.pathname.startsWith('/docs') ? 'ml-64' : 'ml-64'}`}>
         <div className="px-5 py-3">
           <div className="flex flex-col items-center gap-4.5">
             <div className="flex items-center gap-2">
-              <img
-                src="/logo.svg"
-                alt="Quai Vault Logo"
-                className="w-6 h-6 opacity-70"
-              />
-              <p className="text-center text-base font-mono text-dark-500 uppercase tracking-wider">
+              <Logo className="w-6 h-6 opacity-70" />
+              <p className="text-center text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">
                 Quai Multisig Vault
               </p>
             </div>
-            <p className="text-center text-base text-dark-600">
+            <p className="text-center text-base text-dark-500 dark:text-dark-600">
               Decentralized multisig solution for Quai Network
             </p>
             <div className="mt-1.5 flex items-center gap-4.5">
               <div className="w-2 h-2 rounded-full bg-primary-600 animate-glow-pulse"></div>
-              <span className="text-base text-dark-600 font-mono">Secure • Decentralized • Trustless</span>
+              <span className="text-base text-dark-500 dark:text-dark-600 font-mono">Secure • Decentralized • Trustless</span>
             </div>
             <div className="mt-2 flex items-center gap-3">
               <a
                 href="https://github.com/mpoletiek/quai-multisig"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-base text-dark-500 hover:text-primary-400 transition-colors"
+                className="inline-flex items-center gap-2 text-base text-dark-400 dark:text-dark-500 hover:text-primary-400 transition-colors"
                 title="View on GitHub"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">

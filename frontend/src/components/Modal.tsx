@@ -34,7 +34,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
     <>
       {/* Backdrop - covers full screen */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
+        className="fixed inset-0 bg-black/50 dark:bg-black/80 backdrop-blur-sm z-50"
         onClick={onClose}
       />
       
@@ -45,16 +45,16 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       >
         <div className="flex min-h-[calc(100vh-7.5rem-3rem)] items-start justify-center p-5 pointer-events-none">
           <div
-            className={`relative w-full ${sizeClasses[size]} vault-panel shadow-vault-outer border-2 border-dark-700 max-h-[calc(100vh-7.5rem-6rem)] flex flex-col pointer-events-auto`}
+            className={`relative w-full ${sizeClasses[size]} vault-panel shadow-vault-outer border-2 border-dark-200 dark:border-dark-700 max-h-[calc(100vh-7.5rem-6rem)] flex flex-col pointer-events-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header - Fixed */}
-            <div className="flex items-center justify-between p-5 border-b-2 border-dark-700 relative flex-shrink-0">
+            <div className="flex items-center justify-between p-5 border-b-2 border-dark-200 dark:border-dark-700 relative flex-shrink-0">
               <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary-600/50 to-transparent"></div>
               <h2 className="text-lg font-display font-bold text-gradient-red vault-text-glow">{title}</h2>
               <button
                 onClick={onClose}
-                className="text-dark-500 hover:text-primary-400 transition-colors p-4 rounded hover:bg-vault-dark-4"
+                className="text-dark-400 dark:text-dark-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors p-4 rounded hover:bg-dark-100 dark:hover:bg-vault-dark-4"
                 aria-label="Close"
               >
                 <svg

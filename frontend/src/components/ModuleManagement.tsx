@@ -124,7 +124,7 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
       <div className="vault-panel p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-display font-bold text-dark-200">Modules</h2>
+            <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Modules</h2>
             <span className="vault-badge text-base">Loading...</span>
           </div>
         </div>
@@ -136,7 +136,7 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
     <div className="vault-panel p-4">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-4">
-          <h2 className="text-lg font-display font-bold text-dark-200">Modules</h2>
+          <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Modules</h2>
           {enabledCount > 0 && (
             <span className="vault-badge text-base">{enabledCount} Enabled</span>
           )}
@@ -145,7 +145,7 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
           {enabledCount > 0 && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-base text-primary-400 hover:text-primary-300 transition-colors font-semibold flex items-center gap-2"
+              className="text-base text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300 transition-colors font-semibold flex items-center gap-2"
             >
               <svg
                 className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -179,7 +179,7 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
             {enabledModules.map((module) => (
               <div
                 key={module.address}
-                className="flex items-center justify-between p-3 bg-vault-dark-4 rounded-md border border-primary-600/50"
+                className="flex items-center justify-between p-3 bg-primary-50 dark:bg-vault-dark-4 rounded-md border border-primary-600/50"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-primary-700 to-primary-900 border border-primary-600/50 flex items-center justify-center">
@@ -187,8 +187,8 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-semibold text-dark-200">{module.name}</h3>
-                      <span className="vault-badge text-sm border-primary-600/50 text-primary-400 bg-primary-900/30">
+                      <h3 className="text-base font-semibold text-dark-700 dark:text-dark-200">{module.name}</h3>
+                      <span className="vault-badge text-sm border-primary-600/50 text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/30">
                         Enabled
                       </span>
                     </div>
@@ -264,8 +264,8 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
       {/* Empty State */}
       {enabledCount === 0 && (
         <div className="text-center py-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-vault-dark-4 border-2 border-dark-600 mb-3">
-            <svg className="w-6 h-6 text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-dark-300 dark:border-dark-600 mb-3">
+            <svg className="w-6 h-6 text-dark-400 dark:text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
           </div>
@@ -292,7 +292,7 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
         size="xl"
       >
         <div>
-          <p className="text-base text-dark-400 mb-4">
+          <p className="text-base text-dark-500 dark:text-dark-400 mb-4">
             Select a module to enable for this vault. Each module requires multisig approval.
           </p>
           <div className="space-y-3">
@@ -301,19 +301,19 @@ export function ModuleManagement({ walletAddress, onUpdate }: ModuleManagementPr
                 <div key={module.address} className="space-y-2">
                   <button
                     onClick={() => handleEnable(module.address)}
-                    className="w-full text-left p-4 bg-vault-dark-4 rounded-md border border-dark-600 hover:border-primary-600/50 hover:bg-vault-dark-3 transition-all"
+                    className="w-full text-left p-4 bg-dark-100 dark:bg-vault-dark-4 rounded-md border border-dark-300 dark:border-dark-600 hover:border-primary-600/50 hover:bg-dark-50 dark:hover:bg-vault-dark-3 transition-all"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-vault-dark-3 border border-dark-600 flex items-center justify-center">
+                      <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-dark-50 dark:bg-vault-dark-3 border border-dark-300 dark:border-dark-600 flex items-center justify-center">
                         <div className="text-dark-500">{module.icon}</div>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-dark-200 mb-1">{module.name}</h3>
+                        <h3 className="text-base font-semibold text-dark-700 dark:text-dark-200 mb-1">{module.name}</h3>
                         <p className="text-sm text-dark-500 mb-2">{module.description}</p>
-                        <p className="text-xs font-mono text-dark-600 break-all">{module.address}</p>
+                        <p className="text-xs font-mono text-dark-500 dark:text-dark-600 break-all">{module.address}</p>
                       </div>
                       <div className="flex-shrink-0">
-                        <svg className="w-5 h-5 text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-5 h-5 text-primary-600 dark:text-primary-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                       </div>

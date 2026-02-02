@@ -31,10 +31,10 @@ export function NotificationToast({ notification, onDismiss }: NotificationToast
   };
 
   const typeStyles = {
-    info: 'bg-primary-900/90 border-primary-700 text-primary-200',
-    success: 'bg-green-900/90 border-green-700 text-green-200',
-    warning: 'bg-yellow-900/90 border-yellow-700 text-yellow-200',
-    error: 'bg-red-900/90 border-red-700 text-red-200',
+    info: 'bg-primary-100 dark:bg-primary-900/90 border-primary-300 dark:border-primary-700 text-primary-800 dark:text-primary-200',
+    success: 'bg-green-100 dark:bg-green-900/90 border-green-300 dark:border-green-700 text-green-800 dark:text-green-200',
+    warning: 'bg-yellow-100 dark:bg-yellow-900/90 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200',
+    error: 'bg-red-100 dark:bg-red-900/90 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200',
   };
 
   const icons = {

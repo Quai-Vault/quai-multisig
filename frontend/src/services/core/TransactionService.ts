@@ -60,19 +60,15 @@ export class TransactionService extends BaseService {
 
     let tx;
     try {
-      console.log('Sending proposeTransaction...');
       tx = await wallet.proposeTransaction(to, value, data, txOptions);
-      console.log('Transaction sent:', tx.hash);
-    } catch (error: any) {
+    } catch (error) {
       throw formatTransactionError(error, 'Transaction proposal failed', wallet);
     }
 
     const receipt = await tx.wait();
 
     // Extract transaction hash from event
-    const txHash = this.extractTxHashFromReceipt(receipt, wallet);
-    console.log('Transaction proposed successfully:', txHash);
-    return txHash;
+    return this.extractTxHashFromReceipt(receipt, wallet);
   }
 
   /**
@@ -90,7 +86,6 @@ export class TransactionService extends BaseService {
     );
 
     const tx = await wallet.approveTransaction(normalizedHash, buildTxOptions(gasLimit));
-    console.log('Approval transaction sent:', tx.hash);
     await tx.wait();
   }
 
@@ -155,8 +150,6 @@ export class TransactionService extends BaseService {
     );
 
     const tx = await wallet.cancelTransaction(normalizedHash, buildTxOptions(gasLimit));
-    console.log('Cancel transaction sent:', tx.hash);
-
     const receipt = await tx.wait();
 
     // Verify on-chain
@@ -177,14 +170,7 @@ export class TransactionService extends BaseService {
     const wallet = this.getWalletContract(walletAddress, signer);
 
     // Pre-validation
-    const txDetails = await this.validateExecuteTransaction(wallet, normalizedHash, walletAddress);
-
-    console.log('Executing transaction:', normalizedHash);
-    console.log('  Transaction details:', {
-      to: txDetails.to,
-      value: txDetails.value.toString(),
-      numApprovals: txDetails.numApprovals.toString(),
-    });
+    await this.validateExecuteTransaction(wallet, normalizedHash, walletAddress);
 
     const { gasLimit } = await estimateGasWithBuffer(
       wallet.executeTransaction,
@@ -195,8 +181,7 @@ export class TransactionService extends BaseService {
     let tx;
     try {
       tx = await wallet.executeTransaction(normalizedHash, buildTxOptions(gasLimit));
-      console.log('Execute transaction sent:', tx.hash);
-    } catch (error: any) {
+    } catch (error) {
       throw formatTransactionError(error, 'Transaction execution failed', wallet);
     }
 
@@ -244,10 +229,6 @@ export class TransactionService extends BaseService {
       throw new Error('You have already approved this transaction');
     }
 
-    console.log('Approving and potentially executing transaction:', normalizedHash);
-    console.log('  Current approvals:', txDetails.numApprovals.toString());
-    console.log('  Threshold:', threshold.toString());
-
     const { gasLimit } = await estimateGasWithBuffer(
       wallet.approveAndExecute,
       [normalizedHash],
@@ -257,8 +238,7 @@ export class TransactionService extends BaseService {
     let tx;
     try {
       tx = await wallet.approveAndExecute(normalizedHash, buildTxOptions(gasLimit));
-      console.log('Approve and execute transaction sent:', tx.hash);
-    } catch (error: any) {
+    } catch (error) {
       throw formatTransactionError(error, 'Approve and execute failed', wallet);
     }
 
@@ -274,7 +254,6 @@ export class TransactionService extends BaseService {
       try {
         const parsed = wallet.interface.parseLog(log);
         if (parsed?.name === 'TransactionExecuted' && parsed.args?.txHash === normalizedHash) {
-          console.log('Transaction was executed');
           return true;
         }
       } catch {
@@ -282,7 +261,6 @@ export class TransactionService extends BaseService {
       }
     }
 
-    console.log('Transaction approved but not yet executed (threshold not met)');
     return false;
   }
 
@@ -335,8 +313,7 @@ export class TransactionService extends BaseService {
         proposer: tx.proposer || '',
         approvals,
       };
-    } catch (error) {
-      console.error(`Error fetching transaction ${txHash}:`, error);
+    } catch {
       return null;
     }
   }
@@ -382,7 +359,7 @@ export class TransactionService extends BaseService {
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       if (existingTx.to.toLowerCase() !== zeroAddress.toLowerCase()) {
         if (existingTx.cancelled) {
-          console.log('Transaction exists but is cancelled. Re-proposing will overwrite it.');
+          // Transaction exists but is cancelled - re-proposing will overwrite it
         } else if (existingTx.executed) {
           throw new Error('This transaction was already executed');
         } else {
@@ -393,7 +370,7 @@ export class TransactionService extends BaseService {
           );
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error.message?.includes('already exists') || error.message?.includes('already executed')) {
         throw error;
       }
@@ -425,7 +402,7 @@ export class TransactionService extends BaseService {
 
     try {
       await wallet.proposeTransaction.estimateGas(to, value, data);
-    } catch (error: any) {
+    } catch (error) {
       if (error.reason && !error.reason.includes('missing revert data')) {
         throw new Error(`Transaction proposal would fail: ${error.reason}`);
       }
@@ -444,8 +421,8 @@ export class TransactionService extends BaseService {
       const callerAddress = await signer.getAddress();
       const currentNonce = await this.provider.getTransactionCount(callerAddress, 'pending');
       txOptions.nonce = currentNonce;
-    } catch (error) {
-      console.warn('Could not get explicit nonce:', error);
+    } catch {
+      // Use default nonce if explicit nonce fails
     }
 
     return txOptions;
@@ -487,8 +464,8 @@ export class TransactionService extends BaseService {
           }
         }
       }
-    } catch (e) {
-      console.warn('Error parsing event by topic:', e);
+    } catch {
+      // Fall through to error
     }
 
     throw new Error('Transaction proposal event not found');
@@ -615,7 +592,7 @@ export class TransactionService extends BaseService {
           );
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       if (error.message?.includes('Cannot remove owner')) {
         throw error;
       }
@@ -624,16 +601,23 @@ export class TransactionService extends BaseService {
 
   /**
    * Get approvals for each owner
+   * Uses Promise.all for parallel fetching instead of sequential loop
    */
   private async getApprovalsForTransaction(
     wallet: Contract,
     txHash: string,
     owners: string[]
   ): Promise<{ [owner: string]: boolean }> {
+    const approvalResults = await Promise.all(
+      owners.map(async (owner) => {
+        const approved = await wallet.approvals(txHash, owner);
+        return { owner: owner.toLowerCase(), approved };
+      })
+    );
+
     const approvals: { [owner: string]: boolean } = {};
-    for (const owner of owners) {
-      const approved = await wallet.approvals(txHash, owner);
-      approvals[owner.toLowerCase()] = approved;
+    for (const { owner, approved } of approvalResults) {
+      approvals[owner] = approved;
     }
     return approvals;
   }
@@ -657,7 +641,7 @@ export class TransactionService extends BaseService {
 
     try {
       events = await wallet.queryFilter(filter, -5000, 'latest');
-    } catch (error: any) {
+    } catch (error) {
       if (error.message?.includes('exceeds maximum limit')) {
         try {
           events = await wallet.queryFilter(filter, -2000, 'latest');
@@ -695,8 +679,8 @@ export class TransactionService extends BaseService {
           proposer: tx.proposer || event.args.proposer || '',
           approvals,
         });
-      } catch (error) {
-        console.error(`Error fetching transaction ${txHash}:`, error);
+      } catch {
+        // Skip transactions that fail to load
       }
     }
 

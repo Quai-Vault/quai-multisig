@@ -15,14 +15,22 @@ export default defineConfig({
     'process.env': {},
   },
   build: {
+    // Use esbuild (default) for minification - fast and efficient
+    target: 'esnext',
+    sourcemap: false, // Disable source maps in production for smaller bundles
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
           'quais': ['quais'],
+          'tanstack': ['@tanstack/react-query'],
         },
       },
     },
+  },
+  // Optimize dependency pre-bundling
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'quais', '@tanstack/react-query'],
   },
   test: {
     globals: true,

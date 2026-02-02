@@ -37,7 +37,7 @@ export function CopyButton({
   return (
     <button
       onClick={handleCopy}
-      className={`inline-flex items-center gap-2 text-primary-500 hover:text-primary-400 transition-colors p-1 rounded hover:bg-vault-dark-3 flex-shrink-0 ${className}`}
+      className={`inline-flex items-center gap-2 text-primary-500 hover:text-primary-400 transition-colors p-1 rounded hover:bg-dark-100 dark:hover:bg-vault-dark-3 flex-shrink-0 ${className}`}
       title={title}
     >
       {copied ? (

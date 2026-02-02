@@ -1,4 +1,4 @@
-import type * as quais from 'quais';
+import type { Signer as QuaisSigner, Provider as QuaisProvider, Contract as QuaisContract } from 'quais';
 
 export interface Transaction {
   to: string;
@@ -32,6 +32,7 @@ export interface PendingTransaction {
   timestamp: number;     // Changed from bigint for JSON serializability
   proposer: string;      // Address of the transaction proposer
   approvals: { [owner: string]: boolean };
+  _optimistic?: boolean; // Flag for optimistic updates (client-side only)
 }
 
 export interface DeploymentConfig {
@@ -56,6 +57,6 @@ export interface DecodedTransaction {
   params: any[];
 }
 
-export type Signer = quais.Signer;
-export type Provider = quais.Provider;
-export type Contract = quais.Contract;
+export type Signer = QuaisSigner;
+export type Provider = QuaisProvider;
+export type Contract = QuaisContract;

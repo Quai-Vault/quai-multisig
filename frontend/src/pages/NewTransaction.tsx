@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMultisig } from '../hooks/useMultisig';
 import { transactionBuilderService } from '../services/TransactionBuilderService';
@@ -6,7 +6,7 @@ import { multisigService } from '../services/MultisigService';
 import { Modal } from '../components/Modal';
 import { TransactionFlow } from '../components/TransactionFlow';
 import { TransactionPreview } from '../components/TransactionPreview';
-import * as quais from 'quais';
+import { isAddress, isHexString } from 'quais';
 
 export function NewTransaction() {
   const { address: walletAddress } = useParams<{ address: string }>();
@@ -28,53 +28,77 @@ export function NewTransaction() {
 
   // Check whitelist status when address or value changes
   useEffect(() => {
+    // Track if effect is still active (component mounted and this effect not cleaned up)
+    let isActive = true;
+
     const checkWhitelist = async () => {
-      if (!walletAddress || !to.trim() || !quais.isAddress(to)) {
-        setIsWhitelisted(null);
-        setWhitelistLimit(null);
+      if (!walletAddress || !to.trim() || !isAddress(to)) {
+        if (isActive) {
+          setIsWhitelisted(null);
+          setWhitelistLimit(null);
+        }
         return;
       }
 
       try {
         const parsedValue = transactionBuilderService.parseValue(value || '0');
-        const canExecute = await multisigService.canExecuteViaWhitelist(
-          walletAddress,
-          to.trim(),
-          parsedValue
-        );
+        const trimmedTo = to.trim();
+
+        // Run whitelist check and limit fetch in parallel for efficiency
+        const [canExecute, limit] = await Promise.all([
+          multisigService.canExecuteViaWhitelist(walletAddress, trimmedTo, parsedValue),
+          multisigService.getWhitelistLimit(walletAddress, trimmedTo),
+        ]);
+
+        // Check if effect is still active before updating state
+        if (!isActive) return;
 
         if (canExecute.canExecute) {
           setIsWhitelisted(true);
-          const limit = await multisigService.getWhitelistLimit(walletAddress, to.trim());
           setWhitelistLimit(limit);
         } else {
           setIsWhitelisted(false);
           setWhitelistLimit(null);
         }
       } catch (error) {
-        setIsWhitelisted(false);
-        setWhitelistLimit(null);
+        if (isActive) {
+          setIsWhitelisted(false);
+          setWhitelistLimit(null);
+        }
       }
     };
 
     // Debounce the check
     const timeoutId = setTimeout(checkWhitelist, 500);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
   }, [walletAddress, to, value]);
 
   // Check daily limit status when value changes (only for simple transfers, not contract calls)
   useEffect(() => {
+    // Track if effect is still active (component mounted and this effect not cleaned up)
+    let isActive = true;
+
     const checkDailyLimit = async () => {
       if (!walletAddress || (data && data !== '0x')) {
-        setCanUseDailyLimit(null);
-        setRemainingDailyLimit(null);
-        setDailyLimitInfo(null);
+        if (isActive) {
+          setCanUseDailyLimit(null);
+          setRemainingDailyLimit(null);
+          setDailyLimitInfo(null);
+        }
         return;
       }
 
       try {
-        // Get daily limit info
-        const dailyLimit = await multisigService.getDailyLimit(walletAddress);
+        // Fetch daily limit info and remaining in parallel for efficiency
+        const [dailyLimit, remaining] = await Promise.all([
+          multisigService.getDailyLimit(walletAddress),
+          multisigService.getRemainingLimit(walletAddress),
+        ]);
+        if (!isActive) return;
+
         if (dailyLimit.limit === 0n) {
           // No daily limit set
           setCanUseDailyLimit(null);
@@ -84,9 +108,6 @@ export function NewTransaction() {
         }
 
         setDailyLimitInfo({ limit: dailyLimit.limit, spent: dailyLimit.spent });
-        
-        // Get remaining limit (handles 24-hour reset automatically)
-        const remaining = await multisigService.getRemainingLimit(walletAddress);
         setRemainingDailyLimit(remaining);
 
         // Check if we can execute via daily limit
@@ -96,21 +117,30 @@ export function NewTransaction() {
             walletAddress,
             parsedValue
           );
-          setCanUseDailyLimit(canExecute.canExecute);
+          if (isActive) {
+            setCanUseDailyLimit(canExecute.canExecute);
+          }
         } else {
-          setCanUseDailyLimit(null);
+          if (isActive) {
+            setCanUseDailyLimit(null);
+          }
         }
       } catch (error) {
         // Module might not be enabled or other error - don't enforce limit
-        setCanUseDailyLimit(null);
-        setRemainingDailyLimit(null);
-        setDailyLimitInfo(null);
+        if (isActive) {
+          setCanUseDailyLimit(null);
+          setRemainingDailyLimit(null);
+          setDailyLimitInfo(null);
+        }
       }
     };
 
     // Debounce the check
     const timeoutId = setTimeout(checkDailyLimit, 500);
-    return () => clearTimeout(timeoutId);
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
   }, [walletAddress, value, data]);
 
   const validateForm = async (): Promise<boolean> => {
@@ -118,7 +148,7 @@ export function NewTransaction() {
 
     if (!to.trim()) {
       newErrors.push('Recipient address is required');
-    } else if (!quais.isAddress(to)) {
+    } else if (!isAddress(to)) {
       newErrors.push('Invalid recipient address');
     }
 
@@ -159,7 +189,7 @@ export function NewTransaction() {
             }
           } catch (error) {
             // If we can't check daily limit (e.g., module not enabled), don't block the transaction
-            console.warn('Could not check daily limit:', error);
+            console.warn('Could not check daily limit:', error instanceof Error ? error.message : 'Unknown error');
           }
         }
       } catch {
@@ -168,7 +198,7 @@ export function NewTransaction() {
     }
 
     if (data && data !== '0x') {
-      if (!quais.isHexString(data)) {
+      if (!isHexString(data)) {
         newErrors.push('Invalid data format (must be hex string)');
       }
     }
@@ -304,12 +334,12 @@ export function NewTransaction() {
     return (
       <div className="text-center py-20">
         <div className="vault-panel max-w-md mx-auto p-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
             <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-2xl font-display font-bold text-dark-200 mb-2">Invalid Vault Address</h2>
+          <h2 className="text-2xl font-display font-bold text-dark-700 dark:text-dark-200 mb-2">Invalid Vault Address</h2>
           <p className="text-dark-500">The requested vault address is invalid.</p>
         </div>
       </div>
@@ -321,7 +351,7 @@ export function NewTransaction() {
       <div className="mb-8">
         <button
           onClick={() => navigate(`/wallet/${walletAddress}`)}
-          className="text-lg text-primary-400 hover:text-primary-300 mb-3 inline-flex items-center gap-4 transition-colors font-semibold"
+          className="text-lg text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 mb-3 inline-flex items-center gap-4 transition-colors font-semibold"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -408,29 +438,29 @@ export function NewTransaction() {
         </div>
 
         {/* Transaction Summary */}
-        <div className="mb-8 bg-vault-dark-4 rounded-md p-5 border border-dark-600">
+        <div className="mb-8 bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600">
           <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Summary</h3>
           <div className="space-y-3 text-lg">
             <div className="flex justify-between items-center">
               <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Type:</span>
-              <span className="text-dark-200 font-semibold">
+              <span className="text-dark-700 dark:text-dark-200 font-semibold">
                 {!data || data === '0x' ? 'Simple Transfer' : 'Contract Call'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
-              <span className="text-primary-300 font-mono truncate max-w-xs text-right">
+              <span className="text-primary-600 dark:text-primary-300 font-mono truncate max-w-xs text-right">
                 {to || '-'}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
-              <span className="text-dark-200 font-semibold">{value || '0'} <span className="text-primary-400">QUAI</span></span>
+              <span className="text-dark-700 dark:text-dark-200 font-semibold">{value || '0'} <span className="text-primary-600 dark:text-primary-400">QUAI</span></span>
             </div>
             {isWhitelisted === true && (
-              <div className="flex justify-between items-center pt-2 border-t border-dark-600">
+              <div className="flex justify-between items-center pt-2 border-t border-dark-300 dark:border-dark-600">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Status:</span>
-                <span className="text-primary-400 font-semibold inline-flex items-center gap-2">
+                <span className="text-primary-600 dark:text-primary-400 font-semibold inline-flex items-center gap-2">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                   </svg>
@@ -439,14 +469,14 @@ export function NewTransaction() {
               </div>
             )}
             {dailyLimitInfo && dailyLimitInfo.limit > 0n && !isWhitelisted && (!data || data === '0x') && (
-              <div className="flex justify-between items-center pt-2 border-t border-dark-600">
+              <div className="flex justify-between items-center pt-2 border-t border-dark-300 dark:border-dark-600">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Daily Limit:</span>
                 <span className={`font-semibold inline-flex items-center gap-2 ${
                   value.trim() && remainingDailyLimit !== null && transactionBuilderService.parseValue(value || '0') > remainingDailyLimit
-                    ? 'text-primary-400'
+                    ? 'text-primary-600 dark:text-primary-400'
                     : canUseDailyLimit === true
                     ? 'text-yellow-400'
-                    : 'text-dark-400'
+                    : 'text-dark-500 dark:text-dark-400'
                 }`}>
                   {remainingDailyLimit !== null ? (
                     <>
@@ -550,29 +580,29 @@ export function NewTransaction() {
       >
         <div className="space-y-4">
           {/* Transaction Summary */}
-          <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600">
             <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Transaction Details</h3>
             <div className="space-y-3 text-lg">
               <div className="flex justify-between items-center">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Type:</span>
-                <span className="text-dark-200 font-semibold">
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">
                   {!data || data === '0x' ? 'Simple Transfer' : 'Contract Call'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recipient:</span>
-                <span className="text-primary-300 font-mono break-all text-right max-w-xs">
+                <span className="text-primary-600 dark:text-primary-300 font-mono break-all text-right max-w-xs">
                   {to || '-'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Amount:</span>
-                <span className="text-dark-200 font-semibold">{value || '0'} <span className="text-primary-400">QUAI</span></span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">{value || '0'} <span className="text-primary-600 dark:text-primary-400">QUAI</span></span>
               </div>
               {isWhitelisted === true && (
-                <div className="flex justify-between items-center pt-2 border-t border-dark-600">
+                <div className="flex justify-between items-center pt-2 border-t border-dark-300 dark:border-dark-600">
                   <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Status:</span>
-                  <span className="text-primary-400 font-semibold inline-flex items-center gap-2">
+                  <span className="text-primary-600 dark:text-primary-400 font-semibold inline-flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
@@ -581,7 +611,7 @@ export function NewTransaction() {
                 </div>
               )}
               {canUseDailyLimit === true && !isWhitelisted && (!data || data === '0x') && (
-                <div className="flex justify-between items-center pt-2 border-t border-dark-600">
+                <div className="flex justify-between items-center pt-2 border-t border-dark-300 dark:border-dark-600">
                   <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Status:</span>
                   <span className="text-yellow-400 font-semibold inline-flex items-center gap-2">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -592,7 +622,7 @@ export function NewTransaction() {
                 </div>
               )}
               {canUseDailyLimit === true && !isWhitelisted && (!data || data === '0x') && (
-                <div className="pt-2 border-t border-dark-600">
+                <div className="pt-2 border-t border-dark-300 dark:border-dark-600">
                   <div className="bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-3">
                     <div className="flex items-start gap-2">
                       <svg className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -608,7 +638,7 @@ export function NewTransaction() {
               {data && data !== '0x' && (
                 <div className="flex justify-between items-start">
                   <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Data:</span>
-                  <span className="text-dark-400 font-mono text-base break-all text-right max-w-xs">
+                  <span className="text-dark-500 dark:text-dark-400 font-mono text-base break-all text-right max-w-xs">
                     {data.length > 20 ? `${data.slice(0, 20)}...` : data}
                   </span>
                 </div>

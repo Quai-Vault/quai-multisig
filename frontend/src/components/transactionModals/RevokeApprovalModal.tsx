@@ -38,7 +38,7 @@ export function RevokeApprovalModal({
       await refreshTransactions();
       
       return '';
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error revoking approval:', error);
       throw error; // Re-throw to let TransactionFlow handle it
     }

@@ -3,8 +3,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { multisigService } from '../services/MultisigService';
 import { notificationManager } from './NotificationContainer';
 import { Modal } from './Modal';
+import { CollapsibleNotice } from './CollapsibleNotice';
 import { SocialRecoveryManagement } from './SocialRecoveryManagement';
-import * as quais from 'quais';
+import { isAddress, getAddress } from 'quais';
 
 interface SocialRecoveryConfigurationProps {
   walletAddress: string;
@@ -114,13 +115,13 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
 
     // Validate addresses
     for (const guardian of validGuardians) {
-      if (!quais.isAddress(guardian.trim())) {
+      if (!isAddress(guardian.trim())) {
         newErrors.push(`Invalid guardian address: ${guardian.substring(0, 10)}...`);
       }
     }
 
     // Check for duplicates
-    const normalizedGuardians = validGuardians.map(g => quais.getAddress(g.trim()).toLowerCase());
+    const normalizedGuardians = validGuardians.map(g => getAddress(g.trim()).toLowerCase());
     const uniqueGuardians = new Set(normalizedGuardians);
     if (uniqueGuardians.size !== normalizedGuardians.length) {
       newErrors.push('Duplicate guardian addresses found');
@@ -166,79 +167,64 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
       size="lg"
     >
       <div className="space-y-6">
-        {/* Multisig Approval Notice */}
-        <div className="bg-gradient-to-r from-green-900/90 via-green-800/90 to-green-900/90 border-l-4 border-green-600 rounded-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="text-base font-semibold text-green-200 mb-1">Multisig Approval Required</h4>
-              <p className="text-sm text-green-200/90">
-                Changes to the recovery configuration now require multisig approval. When you setup or update guardians, a proposal will be created that other owners must approve before it takes effect.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Collapsible Notices */}
+        <div className="space-y-2">
+          <CollapsibleNotice title="Multisig Approval Required" variant="success">
+            <p>
+              Changes to the recovery configuration require multisig approval. When you setup or update guardians, a proposal will be created that other owners must approve before it takes effect.
+            </p>
+          </CollapsibleNotice>
 
-        {/* Important Information */}
-        <div className="bg-gradient-to-r from-blue-900/90 via-blue-800/90 to-blue-900/90 border-l-4 border-blue-600 rounded-md p-4">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <div>
-              <h4 className="text-base font-semibold text-blue-200 mb-1">How Social Recovery Works</h4>
-              <p className="text-sm text-blue-200/90 mb-2">
-                Guardians can initiate a recovery process to change the wallet's owners and threshold. After the recovery period elapses and enough guardians approve, the recovery can be executed.
-              </p>
-              <p className="text-sm text-blue-200/90">
-                <strong>Important:</strong> Only configure trusted addresses as guardians. Guardians have significant power and can recover your wallet if enough of them agree.
-              </p>
-            </div>
-          </div>
+          <CollapsibleNotice title="How Social Recovery Works" variant="info">
+            <p className="mb-2">
+              Guardians can initiate a recovery process to change the wallet's owners and threshold. After the recovery period elapses and enough guardians approve, the recovery can be executed.
+            </p>
+            <p>
+              <strong>Important:</strong> Only configure trusted addresses as guardians. Guardians have significant power and can recover your wallet if enough of them agree.
+            </p>
+          </CollapsibleNotice>
         </div>
 
         {/* Current Configuration */}
         {isLoading ? (
           <div className="text-center py-8">
             <div className="inline-block w-6 h-6 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
-            <p className="mt-2 text-sm text-dark-500">Loading...</p>
+            <p className="mt-2 text-sm text-dark-400 dark:text-dark-500">Loading...</p>
           </div>
         ) : recoveryConfig && recoveryConfig.guardians && recoveryConfig.guardians.length > 0 ? (
-          <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-            <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">Current Configuration</h3>
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600">
+            <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-4">Current Configuration</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Guardians:</span>
-                <span className="text-dark-200 font-semibold">{recoveryConfig.guardians.length}</span>
+                <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Guardians:</span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">{recoveryConfig.guardians.length}</span>
               </div>
               <div className="space-y-2">
                 {recoveryConfig.guardians.map((guardian, index) => (
-                  <div key={index} className="flex items-center justify-between p-2 bg-vault-dark-3 rounded border border-dark-600">
-                    <span className="text-sm font-mono text-primary-300 truncate flex-1">{guardian}</span>
+                  <div key={index} className="flex items-center justify-between p-2 bg-dark-50 dark:bg-vault-dark-3 rounded border border-dark-300 dark:border-dark-600">
+                    <span className="text-sm font-mono text-primary-600 dark:text-primary-300 truncate flex-1">{guardian}</span>
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-dark-600">
-                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Threshold:</span>
-                <span className="text-dark-200 font-semibold">{recoveryConfig.threshold.toString()} of {recoveryConfig.guardians.length}</span>
+              <div className="flex justify-between items-center pt-2 border-t border-dark-300 dark:border-dark-600">
+                <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Threshold:</span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">{recoveryConfig.threshold.toString()} of {recoveryConfig.guardians.length}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Recovery Period:</span>
-                <span className="text-dark-200 font-semibold">{formatRecoveryPeriod(recoveryConfig.recoveryPeriod)}</span>
+                <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Recovery Period:</span>
+                <span className="text-dark-700 dark:text-dark-200 font-semibold">{formatRecoveryPeriod(recoveryConfig.recoveryPeriod)}</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="bg-vault-dark-4 rounded-md p-5 border border-dark-600">
-            <p className="text-base text-dark-400 text-center">No recovery configuration set</p>
+          <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-5 border border-dark-300 dark:border-dark-600">
+            <p className="text-base text-dark-400 dark:text-dark-500 dark:text-dark-400 text-center">No recovery configuration set</p>
           </div>
         )}
 
         {/* Setup/Update Configuration */}
         <div>
-          <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-4">
+          <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-4">
             {recoveryConfig && recoveryConfig.guardians.length > 0 ? 'Propose Configuration Update' : 'Propose Setup Recovery'}
           </h3>
           {pendingRecoveries && pendingRecoveries.length > 0 && (
@@ -261,7 +247,7 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
           <div className="space-y-4">
             {/* Guardians */}
             <div>
-              <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+              <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                 Guardians
               </label>
               <div className="space-y-2">
@@ -302,7 +288,7 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
 
             {/* Threshold */}
             <div>
-              <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+              <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                 Threshold (required approvals)
               </label>
               <input
@@ -316,7 +302,7 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
                 max={guardians.filter(g => g.trim() !== '').length || 1}
                 className="input-field w-full"
               />
-              <p className="mt-2 text-sm font-mono text-dark-600">
+              <p className="mt-2 text-sm font-mono text-dark-500 dark:text-dark-600">
                 {guardians.filter(g => g.trim() !== '').length > 0
                   ? `Requires ${threshold} of ${guardians.filter(g => g.trim() !== '').length} guardian approvals`
                   : 'Add guardians first'}
@@ -325,7 +311,7 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
 
             {/* Recovery Period */}
             <div>
-              <label className="block text-sm font-mono text-dark-500 uppercase tracking-wider mb-2">
+              <label className="block text-sm font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-2">
                 Recovery Period (days)
               </label>
               <input
@@ -335,7 +321,7 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
                 min={1}
                 className="input-field w-full"
               />
-              <p className="mt-2 text-sm font-mono text-dark-600">
+              <p className="mt-2 text-sm font-mono text-dark-500 dark:text-dark-600">
                 Minimum delay before recovery can be executed (minimum 1 day)
               </p>
             </div>
@@ -376,11 +362,11 @@ export function SocialRecoveryConfiguration({ walletAddress, onUpdate }: SocialR
 
         {/* Recovery Management Button */}
         {recoveryConfig && recoveryConfig.guardians.length > 0 && (
-          <div className="border-t border-dark-700 pt-6">
+          <div className="border-t border-dark-200 dark:border-dark-700 pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-base font-mono text-dark-500 uppercase tracking-wider mb-1">Recovery Management</h3>
-                <p className="text-sm text-dark-500">
+                <h3 className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider mb-1">Recovery Management</h3>
+                <p className="text-sm text-dark-400 dark:text-dark-500">
                   Initiate, approve, or execute recovery processes
                 </p>
               </div>

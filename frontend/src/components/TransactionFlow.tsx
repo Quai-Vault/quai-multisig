@@ -39,6 +39,15 @@ export function TransactionFlow({
   });
   const hasExecuted = useRef(false);
   const lastResetKey = useRef(resetKey);
+  const isMountedRef = useRef(true);
+
+  // Track mount state to prevent state updates after unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Reset when resetKey changes (modal reopened)
   useEffect(() => {
@@ -59,12 +68,16 @@ export function TransactionFlow({
 
     const execute = async () => {
       try {
+        if (!isMountedRef.current) return;
         setProgress({ step: 'signing', message: 'Please approve the transaction in your wallet' });
-        
+
         const txHash = await onExecute((progressUpdate) => {
-          setProgress(progressUpdate);
+          if (isMountedRef.current) {
+            setProgress(progressUpdate);
+          }
         });
 
+        if (!isMountedRef.current) return;
         setProgress({
           step: 'waiting',
           txHash,
@@ -74,6 +87,7 @@ export function TransactionFlow({
         // Wait a bit for the transaction to be mined
         await new Promise(resolve => setTimeout(resolve, 2000));
 
+        if (!isMountedRef.current) return;
         setProgress({
           step: 'success',
           txHash,
@@ -82,10 +96,13 @@ export function TransactionFlow({
 
         // Auto-close after 2 seconds
         setTimeout(() => {
-          onComplete();
+          if (isMountedRef.current) {
+            onComplete();
+          }
         }, 2000);
-      } catch (error: any) {
+      } catch (error) {
         console.error('Transaction error:', error);
+        if (!isMountedRef.current) return;
         const errorInfo = parseError(error);
         setProgress({
           step: 'error',
@@ -166,13 +183,13 @@ export function TransactionFlow({
       {/* Progress Indicator */}
       <div className="flex flex-col items-center justify-center py-6">
         {getStepIcon()}
-        <p className="mt-6 text-center text-dark-200 font-semibold text-lg">
+        <p className="mt-6 text-center text-dark-700 dark:text-dark-200 font-semibold text-lg">
           {getStepMessage()}
         </p>
         {progress.txHash && (
-          <div className="mt-4 bg-vault-dark-4 px-4 py-2 rounded-md border border-dark-600 max-w-full">
+          <div className="mt-4 bg-dark-100 dark:bg-vault-dark-4 px-4 py-2 rounded-md border border-dark-300 dark:border-dark-600 max-w-full">
             <p className="text-base font-mono text-dark-500 uppercase tracking-wider mb-1">Transaction Hash</p>
-            <p className="text-lg text-primary-300 font-mono break-all">
+            <p className="text-lg text-primary-600 dark:text-primary-300 font-mono break-all">
               {progress.txHash}
             </p>
           </div>
@@ -181,12 +198,12 @@ export function TransactionFlow({
 
       {/* Error Details */}
       {progress.step === 'error' && progress.error && (
-        <div className="bg-gradient-to-r from-primary-900/90 via-primary-800/90 to-primary-900/90 border-l-4 border-primary-600 rounded-md p-4 shadow-red-glow">
+        <div className="bg-gradient-to-r from-red-100 via-red-50 to-red-100 dark:from-primary-900/90 dark:via-primary-800/90 dark:to-primary-900/90 border-l-4 border-primary-600 rounded-md p-4 shadow-red-glow">
           <div className="flex items-start gap-4">
-            <svg className="w-5 h-5 text-primary-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <svg className="w-5 h-5 text-primary-600 dark:text-primary-300 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
             </svg>
-            <p className="text-lg text-primary-200 font-medium">{progress.error}</p>
+            <p className="text-lg text-primary-700 dark:text-primary-200 font-medium">{progress.error}</p>
           </div>
         </div>
       )}

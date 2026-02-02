@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { BrowserProvider } from 'quais';
 import type { Provider, Signer } from '../types';
 
 interface WalletState {
@@ -17,6 +17,11 @@ export class WalletConnectionService {
   };
 
   private listeners: Set<(state: WalletState) => void> = new Set();
+
+  // Store bound listener references to prevent memory leaks
+  // (using arrow functions ensures same reference for add/remove)
+  private boundAccountsChanged = (accounts: string[]) => this.handleAccountsChanged(accounts);
+  private boundChainChanged = () => this.handleChainChanged();
 
   /**
    * Connect to Pelagus or other Quai-compatible wallet
@@ -38,7 +43,7 @@ export class WalletConnectionService {
       }
 
       // Create provider with usePathing for Quai sharded architecture
-      const provider = new quais.BrowserProvider(
+      const provider = new BrowserProvider(
         window.ethereum,
         undefined,
         { usePathing: true }
@@ -57,9 +62,9 @@ export class WalletConnectionService {
 
       this.notifyListeners();
 
-      // Listen for account changes
-      window.ethereum.on('accountsChanged', this.handleAccountsChanged.bind(this));
-      window.ethereum.on('chainChanged', this.handleChainChanged.bind(this));
+      // Listen for account changes (use stored bound references for proper cleanup)
+      window.ethereum.on('accountsChanged', this.boundAccountsChanged);
+      window.ethereum.on('chainChanged', this.boundChainChanged);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
       throw error;
@@ -71,8 +76,9 @@ export class WalletConnectionService {
    */
   disconnect(): void {
     if (window.ethereum) {
-      window.ethereum.removeListener('accountsChanged', this.handleAccountsChanged);
-      window.ethereum.removeListener('chainChanged', this.handleChainChanged);
+      // Use stored bound references (same as added) to properly remove listeners
+      window.ethereum.removeListener('accountsChanged', this.boundAccountsChanged);
+      window.ethereum.removeListener('chainChanged', this.boundChainChanged);
     }
 
     this.state = {

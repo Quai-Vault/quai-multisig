@@ -18,7 +18,8 @@
       "Bash(grep:*)",
       "Bash(cloc:*)",
       "Bash(find:*)",
-      "Bash(npm run deploy:cyprus1:*)"
+      "Bash(npm run deploy:cyprus1:*)",
+      "Bash(npm ls)"
     ]
   }
 }

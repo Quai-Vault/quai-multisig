@@ -1,4 +1,3 @@
-import * as quais from 'quais';
 import type { Provider } from '../../types';
 import { CONTRACT_ADDRESSES } from '../../config/contracts';
 import { BaseModuleService } from './BaseModuleService';
@@ -118,7 +117,7 @@ export class DailyLimitModuleService extends BaseModuleService {
     let tx;
     try {
       tx = await module.executeBelowLimit(walletAddress, normalizedTo, value, buildTxOptions(gasLimit));
-    } catch (error: any) {
+    } catch (error) {
       if (isUserRejection(error)) {
         throw new Error('Transaction was rejected by user');
       }

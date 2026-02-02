@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { Contract, ZeroAddress, Interface, ContractFactory } from 'quais';
 import type { Contract, Signer, Provider } from '../../types';
 import type { WalletInfo, DeploymentConfig } from '../../types';
 import { CONTRACT_ADDRESSES } from '../../config/contracts';
@@ -18,7 +18,7 @@ export class WalletService extends BaseService {
 
   constructor(provider?: Provider) {
     super(provider);
-    this.factoryContract = new quais.Contract(
+    this.factoryContract = new Contract(
       CONTRACT_ADDRESSES.PROXY_FACTORY,
       ProxyFactoryABI.abi,
       this.provider
@@ -33,7 +33,7 @@ export class WalletService extends BaseService {
     if (signer) {
       this.factoryContract = this.factoryContract.connect(signer) as Contract;
     } else {
-      this.factoryContract = new quais.Contract(
+      this.factoryContract = new Contract(
         CONTRACT_ADDRESSES.PROXY_FACTORY,
         ProxyFactoryABI.abi,
         this.provider
@@ -57,7 +57,7 @@ export class WalletService extends BaseService {
     try {
       const implAddress = await this.getImplementationAddress();
 
-      if (!implAddress || implAddress === quais.ZeroAddress) {
+      if (!implAddress || implAddress === ZeroAddress) {
         errors.push('Implementation address is not set');
       } else {
         const code = await this.provider.getCode(implAddress);
@@ -106,16 +106,9 @@ export class WalletService extends BaseService {
     }
 
     try {
-      console.log('Deploying wallet directly with:');
-      console.log('  Owners:', owners);
-      console.log('  Threshold:', threshold);
-      console.log('  Implementation:', CONTRACT_ADDRESSES.MULTISIG_IMPLEMENTATION);
-
       // Encode initialization data
-      const iface = new quais.Interface(MultisigWalletABI.abi);
+      const iface = new Interface(MultisigWalletABI.abi);
       const initData = iface.encodeFunctionData('initialize', [owners, threshold]);
-
-      console.log('  Init data:', initData);
 
       // Validate ABI and bytecode
       if (!MultisigWalletProxyABI?.bytecode) {
@@ -131,10 +124,8 @@ export class WalletService extends BaseService {
         throw new Error('Failed to extract IPFS hash from proxy bytecode');
       }
 
-      console.log('  IPFS hash:', ipfsHash);
-
       // Deploy proxy with IPFS hash
-      const ProxyFactory = new quais.ContractFactory(
+      const ProxyFactory = new ContractFactory(
         MultisigWalletProxyABI.abi,
         MultisigWalletProxyABI.bytecode,
         signer,
@@ -149,7 +140,6 @@ export class WalletService extends BaseService {
       );
 
       const deployTxHash = proxy.deploymentTransaction()?.hash;
-      console.log('Transaction sent:', deployTxHash);
 
       onProgress?.({
         step: 'deploying_waiting',
@@ -159,8 +149,6 @@ export class WalletService extends BaseService {
 
       await proxy.waitForDeployment();
       const walletAddress = await proxy.getAddress();
-
-      console.log('Wallet deployed to:', walletAddress);
 
       // Verify deployed bytecode
       onProgress?.({
@@ -188,11 +176,14 @@ export class WalletService extends BaseService {
       });
 
       return walletAddress;
-    } catch (error: any) {
-      console.error('Deployment error:', error);
+    } catch (error) {
+      // Log without sensitive deployment details (addresses already revealed through deployment progress)
+      console.error('Deployment error:', error instanceof Error ? error.message : 'Unknown error');
 
-      if (error.code === 'CALL_EXCEPTION') {
-        throw new Error('Deployment failed: ' + (error.reason || error.message || 'Unknown error'));
+      // Check for ethers.js error structure
+      const ethersError = error as { code?: string; reason?: string; message?: string };
+      if (ethersError.code === 'CALL_EXCEPTION') {
+        throw new Error('Deployment failed: ' + (ethersError.reason || ethersError.message || 'Unknown error'));
       }
       throw error;
     }
@@ -207,15 +198,11 @@ export class WalletService extends BaseService {
       const expectedDeployed = MultisigWalletProxyABI.deployedBytecode.replace('0x', '').toLowerCase();
       const actualDeployed = deployedCode.replace('0x', '').toLowerCase();
 
-      if (actualDeployed === expectedDeployed) {
-        console.log('Verified: Deployed bytecode matches expected bytecode');
-      } else {
-        console.warn('WARNING: Deployed bytecode does not match expected!');
-        console.warn('  Expected length:', expectedDeployed.length);
-        console.warn('  Actual length:', actualDeployed.length);
+      if (actualDeployed !== expectedDeployed) {
+        console.warn('Deployed bytecode does not match expected');
       }
-    } catch (error) {
-      console.warn('Could not verify deployed bytecode:', error);
+    } catch {
+      // Verification is non-blocking
     }
   }
 
@@ -235,7 +222,6 @@ export class WalletService extends BaseService {
         message: 'Please approve the registration transaction in your wallet',
       });
 
-      console.log('Registering wallet with factory...');
       const registerTx = await this.factoryContract.registerWallet(walletAddress);
       const registerTxHash = registerTx.hash;
 
@@ -248,11 +234,9 @@ export class WalletService extends BaseService {
       });
 
       await registerTx.wait();
-      console.log('Wallet registered with factory');
 
       return registerTxHash;
-    } catch (error) {
-      console.warn('Warning: Failed to register wallet with factory:', error);
+    } catch {
       return undefined;
     }
   }
@@ -261,47 +245,28 @@ export class WalletService extends BaseService {
    * Get wallet information
    */
   async getWalletInfo(walletAddress: string): Promise<WalletInfo> {
-    console.log('Getting wallet info for:', walletAddress);
+    const wallet = this.getWalletContract(walletAddress);
 
-    try {
-      const wallet = this.getWalletContract(walletAddress);
+    const [owners, threshold, balance] = await Promise.all([
+      wallet.getOwners(),
+      wallet.threshold(),
+      this.provider.getBalance(walletAddress),
+    ]);
 
-      const [owners, threshold, balance] = await Promise.all([
-        wallet.getOwners(),
-        wallet.threshold(),
-        this.provider.getBalance(walletAddress),
-      ]);
-
-      const result = {
-        address: walletAddress,
-        owners: Array.from(owners).map(address => String(address)),
-        threshold: Number(threshold),
-        balance: balance.toString(),
-      };
-
-      console.log('Wallet info:', result);
-      return result;
-    } catch (error) {
-      console.error('Error getting wallet info:', error);
-      throw error;
-    }
+    return {
+      address: walletAddress,
+      owners: Array.from(owners).map(address => String(address)),
+      threshold: Number(threshold),
+      balance: balance.toString(),
+    };
   }
 
   /**
    * Get all wallets for an owner address
    */
   async getWalletsForOwner(ownerAddress: string): Promise<string[]> {
-    console.log('Getting wallets for owner:', ownerAddress);
-
-    try {
-      const wallets = await this.factoryContract.getWalletsByCreator(ownerAddress);
-      const result = Array.from(wallets).map(address => String(address));
-      console.log('Wallets found:', result);
-      return result;
-    } catch (error) {
-      console.error('Error getting wallets:', error);
-      throw error;
-    }
+    const wallets = await this.factoryContract.getWalletsByCreator(ownerAddress);
+    return Array.from(wallets).map(address => String(address));
   }
 
   /**
@@ -318,6 +283,13 @@ export class WalletService extends BaseService {
   async isModuleEnabled(walletAddress: string, moduleAddress: string): Promise<boolean> {
     const wallet = this.getWalletContract(walletAddress);
     return await wallet.modules(moduleAddress);
+  }
+
+  /**
+   * Get the balance of a wallet address
+   */
+  async getBalance(walletAddress: string): Promise<bigint> {
+    return await this.provider.getBalance(walletAddress);
   }
 
   /**

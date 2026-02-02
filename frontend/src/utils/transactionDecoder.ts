@@ -1,4 +1,4 @@
-import * as quais from 'quais';
+import { formatQuai, Interface } from 'quais';
 import MultisigWalletABI from '../config/abi/MultisigWallet.json';
 
 export interface DecodedTransaction {
@@ -24,7 +24,7 @@ export function decodeTransaction(
     return {
       type: 'transfer',
       description: 'Transfer QUAI',
-      details: `${parseFloat(quais.formatQuai(tx.value)).toFixed(4)} QUAI`,
+      details: `${parseFloat(formatQuai(tx.value)).toFixed(4)} QUAI`,
       icon: '💸',
       bgColor: 'bg-primary-900',
       borderColor: 'border-primary-700',
@@ -35,7 +35,7 @@ export function decodeTransaction(
   // Self-call (wallet calling itself) - likely owner management
   if (tx.to.toLowerCase() === walletAddress.toLowerCase()) {
     try {
-      const iface = new quais.Interface(MultisigWalletABI.abi);
+      const iface = new Interface(MultisigWalletABI.abi);
       const decoded = iface.parseTransaction({ data: tx.data });
 
       if (!decoded) {
@@ -52,7 +52,19 @@ export function decodeTransaction(
 
       switch (decoded.name) {
         case 'addOwner': {
-          const ownerAddress = decoded.args[0] as string;
+          // Bounds check: ensure args array has the expected element
+          if (!decoded.args || decoded.args.length < 1) {
+            return {
+              type: 'contractCall',
+              description: 'Add Owner',
+              details: 'Invalid arguments',
+              icon: '➕',
+              bgColor: 'bg-green-900',
+              borderColor: 'border-green-700',
+              textColor: 'text-green-200',
+            };
+          }
+          const ownerAddress = String(decoded.args[0]);
           return {
             type: 'addOwner',
             description: 'Add Owner',
@@ -64,7 +76,19 @@ export function decodeTransaction(
           };
         }
         case 'removeOwner': {
-          const ownerAddress = decoded.args[0] as string;
+          // Bounds check: ensure args array has the expected element
+          if (!decoded.args || decoded.args.length < 1) {
+            return {
+              type: 'contractCall',
+              description: 'Remove Owner',
+              details: 'Invalid arguments',
+              icon: '➖',
+              bgColor: 'bg-red-900',
+              borderColor: 'border-red-700',
+              textColor: 'text-red-200',
+            };
+          }
+          const ownerAddress = String(decoded.args[0]);
           return {
             type: 'removeOwner',
             description: 'Remove Owner',
@@ -76,11 +100,23 @@ export function decodeTransaction(
           };
         }
         case 'changeThreshold': {
-          const newThreshold = decoded.args[0] as bigint;
+          // Bounds check: ensure args array has the expected element
+          if (!decoded.args || decoded.args.length < 1) {
+            return {
+              type: 'contractCall',
+              description: 'Change Threshold',
+              details: 'Invalid arguments',
+              icon: '🔢',
+              bgColor: 'bg-blue-900',
+              borderColor: 'border-blue-700',
+              textColor: 'text-blue-200',
+            };
+          }
+          const newThreshold = decoded.args[0];
           return {
             type: 'changeThreshold',
             description: 'Change Threshold',
-            details: `Set threshold to ${newThreshold.toString()}`,
+            details: `Set threshold to ${String(newThreshold)}`,
             icon: '🔢',
             bgColor: 'bg-blue-900',
             borderColor: 'border-blue-700',

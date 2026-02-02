@@ -1,14 +1,16 @@
 import { useParams, Link } from 'react-router-dom';
 import { useMultisig } from '../hooks/useMultisig';
+import { useIndexerConnection } from '../hooks/useIndexerConnection';
 import { decodeTransaction } from '../utils/transactionDecoder';
 import { getBlockRangeTimePeriod } from '../utils/blockTime';
 import { CopyButton } from '../components/CopyButton';
 import { ExplorerLink } from '../components/ExplorerLink';
 import { EmptyState } from '../components/EmptyState';
-import * as quais from 'quais';
+import { formatQuai } from 'quais';
 
 export function TransactionHistory() {
   const { address: walletAddress } = useParams<{ address: string }>();
+  const { isConnected: isIndexerConnected } = useIndexerConnection();
   const { executedTransactions, cancelledTransactions, isLoadingHistory, isLoadingCancelled, refreshHistory, refreshCancelled } = useMultisig(walletAddress);
 
   const formatAddress = (addr: string) => {
@@ -19,12 +21,12 @@ export function TransactionHistory() {
     return (
       <div className="text-center py-20">
         <div className="vault-panel max-w-md mx-auto p-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-primary-600/30 mb-6">
             <svg className="w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h2 className="text-lg font-display font-bold text-dark-200 mb-2">Invalid Vault Address</h2>
+          <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-2">Invalid Vault Address</h2>
           <p className="text-dark-500">The requested vault address is invalid.</p>
         </div>
       </div>
@@ -37,7 +39,7 @@ export function TransactionHistory() {
       <div className="mb-8">
         <Link
           to={`/wallet/${walletAddress}`}
-          className="text-lg text-primary-400 hover:text-primary-300 mb-3 inline-flex items-center gap-4 transition-colors font-semibold"
+          className="text-lg text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 mb-3 inline-flex items-center gap-4 transition-colors font-semibold"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -48,43 +50,45 @@ export function TransactionHistory() {
         <p className="text-lg font-mono text-dark-500 uppercase tracking-wider mt-2">Complete Transaction Log</p>
       </div>
 
-      {/* Info Banner */}
-      <div className="bg-vault-dark-4 border border-dark-600 rounded-md p-4 mb-4">
-        <div className="flex items-start gap-4">
-          <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <div className="flex-1">
-            <p className="text-base font-mono text-dark-400">
-              Showing transactions from the last <span className="text-primary-400 font-semibold">{getBlockRangeTimePeriod()}</span>
-            </p>
-            <p className="text-base text-dark-600 mt-1">
-              Older transactions may not be displayed due to network query limitations.
-              {' '}
-              <Link
-                to={`/wallet/${walletAddress}/lookup`}
-                className="text-primary-400 hover:text-primary-300 underline font-semibold"
-              >
-                Lookup by hash
-              </Link>
-              {' '}to find older transactions.
-            </p>
+      {/* Info Banner - Only show limitation warning when indexer is not connected */}
+      {!isIndexerConnected && (
+        <div className="bg-dark-100 dark:bg-vault-dark-4 border border-dark-300 dark:border-dark-600 rounded-md p-4 mb-4">
+          <div className="flex items-start gap-4">
+            <svg className="w-5 h-5 text-primary-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-base font-mono text-dark-500 dark:text-dark-400">
+                Showing transactions from the last <span className="text-primary-600 dark:text-primary-400 font-semibold">{getBlockRangeTimePeriod()}</span>
+              </p>
+              <p className="text-base text-dark-600 mt-1">
+                Older transactions may not be displayed due to network query limitations.
+                {' '}
+                <Link
+                  to={`/wallet/${walletAddress}/lookup`}
+                  className="text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 underline font-semibold"
+                >
+                  Lookup by hash
+                </Link>
+                {' '}to find older transactions.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Executed Transactions */}
       <div className="vault-panel p-8 mb-8">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-lg font-display font-bold text-dark-200 mb-1">Executed Transactions</h2>
+            <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200 mb-1">Executed Transactions</h2>
             <p className="text-base font-mono text-dark-500 uppercase tracking-wider">
               {executedTransactions?.length || 0} Completed
             </p>
           </div>
           <button
             onClick={() => refreshHistory()}
-            className="text-lg text-primary-400 hover:text-primary-300 transition-colors font-semibold flex items-center gap-4"
+            className="text-lg text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 transition-colors font-semibold flex items-center gap-4"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -99,7 +103,7 @@ export function TransactionHistory() {
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
               <div className="relative inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
             </div>
-            <p className="mt-6 text-dark-400 font-semibold">Loading transaction history...</p>
+            <p className="mt-6 text-dark-500 dark:text-dark-400 font-semibold">Loading transaction history...</p>
             <p className="mt-2 text-base font-mono text-dark-600 uppercase tracking-wider">Accessing vault records</p>
           </div>
         ) : !executedTransactions || executedTransactions.length === 0 ? (
@@ -153,20 +157,20 @@ export function TransactionHistory() {
                           <span className="mr-1.5">{decoded.icon}</span>
                           {decoded.description}
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-md text-base font-bold bg-primary-900/50 text-primary-300 border border-primary-700/50">
+                        <span className="inline-flex items-center px-3 py-1 rounded-md text-base font-bold bg-primary-900/50 text-primary-600 dark:text-primary-300 border border-primary-700/50">
                           ✓ Executed
                         </span>
                       </div>
                       {decoded.details && (
-                        <p className="text-lg text-dark-200 font-semibold mt-2">{decoded.details}</p>
+                        <p className="text-lg text-dark-700 dark:text-dark-200 font-semibold mt-2">{decoded.details}</p>
                       )}
                       <p className="text-base font-mono text-dark-500 mt-2 uppercase tracking-wider">{formatTimestamp(tx.timestamp)}</p>
                     </div>
                     <div className="text-right ml-4 flex-shrink-0">
                       {tx.value !== '0' && (
                         <p className="text-base font-display font-bold text-gradient-red vault-text-glow">
-                          {parseFloat(quais.formatQuai(tx.value)).toFixed(4)}
-                          <span className="text-lg text-primary-400 ml-1">QUAI</span>
+                          {parseFloat(formatQuai(tx.value)).toFixed(4)}
+                          <span className="text-lg text-primary-600 dark:text-primary-400 ml-1">QUAI</span>
                         </p>
                       )}
                       <div className="flex items-center gap-4 justify-end mt-2">
@@ -181,15 +185,15 @@ export function TransactionHistory() {
 
                   {/* Transaction Details - Only show if not a self-call */}
                   {tx.to.toLowerCase() !== walletAddress.toLowerCase() && (
-                    <div className="bg-vault-dark-4 rounded-md p-4 mb-4 border border-dark-600 space-y-3">
+                    <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 mb-4 border border-dark-300 dark:border-dark-600 space-y-3">
                       <div className="flex justify-between text-lg">
                         <span className="text-base font-mono text-dark-500 uppercase tracking-wider">To:</span>
-                        <span className="font-mono text-lg text-primary-300">{formatAddress(tx.to)}</span>
+                        <span className="font-mono text-lg text-primary-600 dark:text-primary-300">{formatAddress(tx.to)}</span>
                       </div>
                       {tx.data !== '0x' && decoded.type === 'contractCall' && (
                         <div className="flex justify-between text-lg">
                           <span className="text-base font-mono text-dark-500 uppercase tracking-wider">Data:</span>
-                          <span className="font-mono text-base text-dark-400 break-all max-w-xs text-right">
+                          <span className="font-mono text-base text-dark-500 dark:text-dark-400 break-all max-w-xs text-right">
                             {tx.data.length > 50 ? `${tx.data.slice(0, 50)}...` : tx.data}
                           </span>
                         </div>
@@ -207,7 +211,7 @@ export function TransactionHistory() {
                           .map(([owner]) => (
                             <span
                               key={owner}
-                              className="vault-badge text-primary-300 border-primary-600/30"
+                              className="vault-badge text-primary-600 dark:text-primary-300 border-primary-600/30"
                             >
                               {formatAddress(owner)}
                             </span>
@@ -226,14 +230,14 @@ export function TransactionHistory() {
       <div className="vault-panel p-8 opacity-90">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h2 className="text-lg font-display font-bold text-dark-300 mb-1">Cancelled Transactions</h2>
+            <h2 className="text-lg font-display font-bold text-dark-600 dark:text-dark-300 mb-1">Cancelled Transactions</h2>
             <p className="text-base font-mono text-dark-500 uppercase tracking-wider">
               {cancelledTransactions?.length || 0} Cancelled
             </p>
           </div>
           <button
             onClick={() => refreshCancelled()}
-            className="text-lg text-primary-400 hover:text-primary-300 transition-colors font-semibold flex items-center gap-4"
+            className="text-lg text-primary-600 dark:text-primary-400 hover:text-primary-600 dark:text-primary-300 transition-colors font-semibold flex items-center gap-4"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -248,12 +252,12 @@ export function TransactionHistory() {
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
               <div className="relative inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary-600 border-r-transparent"></div>
             </div>
-            <p className="mt-6 text-dark-400 font-semibold">Loading cancelled transactions...</p>
+            <p className="mt-6 text-dark-500 dark:text-dark-400 font-semibold">Loading cancelled transactions...</p>
             <p className="mt-2 text-base font-mono text-dark-600 uppercase tracking-wider">Accessing vault records</p>
           </div>
         ) : !cancelledTransactions || cancelledTransactions.length === 0 ? (
           <div className="text-center py-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-vault-dark-4 border-2 border-dark-600 mb-4">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-100 dark:bg-vault-dark-4 border-2 border-dark-300 dark:border-dark-600 mb-4">
               <svg
                 className="w-8 h-8 text-dark-600"
                 fill="none"
@@ -296,19 +300,19 @@ export function TransactionHistory() {
                           <span className="mr-1.5">{decoded.icon}</span>
                           {decoded.description}
                         </span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-md text-base font-bold bg-dark-600/50 text-dark-400 border border-dark-500">
+                        <span className="inline-flex items-center px-3 py-1 rounded-md text-base font-bold bg-dark-600/50 text-dark-500 dark:text-dark-400 border border-dark-500">
                           ✕ Cancelled
                         </span>
                       </div>
                       {decoded.details && (
-                        <p className="text-lg text-dark-300 font-semibold mt-2">{decoded.details}</p>
+                        <p className="text-lg text-dark-600 dark:text-dark-300 font-semibold mt-2">{decoded.details}</p>
                       )}
                       <p className="text-base font-mono text-dark-600 mt-2 uppercase tracking-wider">{formatTimestamp(tx.timestamp)}</p>
                     </div>
                     <div className="text-right ml-4 flex-shrink-0">
                       {tx.value !== '0' && (
-                        <p className="text-base font-display font-bold text-dark-400">
-                          {parseFloat(quais.formatQuai(tx.value)).toFixed(4)}
+                        <p className="text-base font-display font-bold text-dark-500 dark:text-dark-400">
+                          {parseFloat(formatQuai(tx.value)).toFixed(4)}
                           <span className="text-lg text-dark-500 ml-1">QUAI</span>
                         </p>
                       )}
@@ -324,10 +328,10 @@ export function TransactionHistory() {
 
                   {/* Transaction Details - Only show if not a self-call */}
                   {tx.to.toLowerCase() !== walletAddress.toLowerCase() && (
-                    <div className="bg-vault-dark-4 rounded-md p-4 mb-4 border border-dark-600 space-y-3">
+                    <div className="bg-dark-100 dark:bg-vault-dark-4 rounded-md p-4 mb-4 border border-dark-300 dark:border-dark-600 space-y-3">
                       <div className="flex justify-between text-lg">
                         <span className="text-base font-mono text-dark-600 uppercase tracking-wider">To:</span>
-                        <span className="font-mono text-lg text-dark-400">{formatAddress(tx.to)}</span>
+                        <span className="font-mono text-lg text-dark-500 dark:text-dark-400">{formatAddress(tx.to)}</span>
                       </div>
                       {tx.data !== '0x' && decoded.type === 'contractCall' && (
                         <div className="flex justify-between text-lg">
@@ -350,7 +354,7 @@ export function TransactionHistory() {
                           .map(([owner]) => (
                             <span
                               key={owner}
-                              className="vault-badge text-dark-400 border-dark-600 opacity-75"
+                              className="vault-badge text-dark-500 dark:text-dark-400 border-dark-300 dark:border-dark-600 opacity-75"
                             >
                               {formatAddress(owner)}
                             </span>
