@@ -59,6 +59,17 @@ export function Layout({ children }: LayoutProps) {
                 <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-300">Orchard Testnet</span>
                 <span className="text-xs text-yellow-600 dark:text-yellow-400 hidden md:inline">• Do not store significant funds</span>
               </div>
+              <a
+                href="https://quaivault.org/docs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-lg text-dark-400 dark:text-dark-500 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-dark-100 dark:hover:bg-vault-dark-4 transition-colors"
+                title="Documentation"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </a>
               <SyncStatusBadge />
             </div>
           </div>
@@ -126,7 +137,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div className="mt-2 flex items-center gap-3">
               <a
-                href="https://github.com/mpoletiek/quai-multisig"
+                href={import.meta.env.VITE_GITHUB_URL || 'https://github.com/Quai-Vault/quai-multisig'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-base text-dark-400 dark:text-dark-500 hover:text-primary-400 transition-colors"
