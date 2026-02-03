@@ -181,6 +181,25 @@ export class MultisigService {
     return this.wallet.getWalletsForOwner(ownerAddress);
   }
 
+  async getWalletsForGuardian(guardianAddress: string): Promise<string[]> {
+    const indexerAvailable = await this.isIndexerAvailable();
+
+    // Guardian wallets are only available via indexer (social recovery is indexed only)
+    if (indexerAvailable) {
+      try {
+        const wallets = await indexerService.wallet.getWalletsForGuardian(guardianAddress);
+        // Return checksummed addresses for display and blockchain compatibility
+        return wallets.map((w) => getAddress(w.address));
+      } catch {
+        // Return empty array if indexer unavailable or query fails
+        return [];
+      }
+    }
+
+    // No blockchain fallback - guardian relationships are only tracked in indexer
+    return [];
+  }
+
   async isOwner(walletAddress: string, address: string): Promise<boolean> {
     // Try indexer first for faster response
     if (await this.isIndexerAvailable()) {

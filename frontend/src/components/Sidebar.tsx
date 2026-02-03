@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
@@ -9,6 +9,9 @@ import { ThemeToggle } from './ThemeToggle';
 // Memoize formatAddress outside component to avoid recreation
 const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
+const OWNER_VAULTS_COLLAPSED_KEY = 'sidebar-owner-vaults-collapsed';
+const GUARDIAN_VAULTS_COLLAPSED_KEY = 'sidebar-guardian-vaults-collapsed';
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
@@ -16,8 +19,26 @@ interface SidebarProps {
 
 export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { connect, disconnect, connected, address } = useWallet();
-  const { userWallets, isLoadingWallets, isRefetchingWallets } = useMultisig();
+  const { userWallets, guardianWallets, isLoadingWallets, isLoadingGuardianWallets, isRefetchingWallets, isRefetchingGuardianWallets } = useMultisig();
   const location = useLocation();
+
+  const [ownerVaultsCollapsed, setOwnerVaultsCollapsed] = useState(() => {
+    const stored = localStorage.getItem(OWNER_VAULTS_COLLAPSED_KEY);
+    return stored === 'true';
+  });
+
+  const [guardianVaultsCollapsed, setGuardianVaultsCollapsed] = useState(() => {
+    const stored = localStorage.getItem(GUARDIAN_VAULTS_COLLAPSED_KEY);
+    return stored === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(OWNER_VAULTS_COLLAPSED_KEY, String(ownerVaultsCollapsed));
+  }, [ownerVaultsCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(GUARDIAN_VAULTS_COLLAPSED_KEY, String(guardianVaultsCollapsed));
+  }, [guardianVaultsCollapsed]);
 
   return (
     <>
@@ -89,7 +110,7 @@ export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarPro
               To view your vaults
             </p>
           </div>
-        ) : isLoadingWallets ? (
+        ) : (isLoadingWallets || isLoadingGuardianWallets) ? (
           <div className="text-center py-12">
             <div className="relative inline-block">
               <div className="absolute inset-0 bg-primary-600/20 blur-xl animate-pulse"></div>
@@ -97,7 +118,7 @@ export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarPro
             </div>
             <p className="mt-5 text-base text-dark-500 dark:text-dark-400 font-semibold">Loading vaults...</p>
           </div>
-        ) : !userWallets || userWallets.length === 0 ? (
+        ) : (!userWallets || userWallets.length === 0) && (!guardianWallets || guardianWallets.length === 0) ? (
           <EmptyState
             icon={
               <svg className="w-9 h-9 text-dark-400 dark:text-dark-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,40 +134,113 @@ export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarPro
             className="py-10"
           />
         ) : (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <div className="flex items-center gap-4.5">
-                <h2 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 uppercase tracking-wider">
-                  Vaults
-                </h2>
-                {isRefetchingWallets && (
-                  <div className="w-5 h-5 border border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="space-y-6">
+            {/* Owner Vaults */}
+            {userWallets && userWallets.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <button
+                    onClick={() => setOwnerVaultsCollapsed(!ownerVaultsCollapsed)}
+                    className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                  >
+                    <svg
+                      className={`w-4 h-4 text-dark-500 transition-transform ${ownerVaultsCollapsed ? '-rotate-90' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <h2 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 uppercase tracking-wider">
+                      Your Vaults
+                    </h2>
+                    {isRefetchingWallets && (
+                      <div className="w-5 h-5 border border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                  </button>
+                  <span className="vault-badge">
+                    {userWallets.length}
+                  </span>
+                </div>
+                {!ownerVaultsCollapsed && (
+                  <div className="space-y-3">
+                    {userWallets.map((walletAddress) => {
+                      const isActive = location.pathname === `/wallet/${walletAddress}` || location.pathname.startsWith(`/wallet/${walletAddress}/`);
+                      return (
+                        <div
+                          key={walletAddress}
+                          className={`vault-panel p-4 hover:border-primary-600/50 transition-all ${
+                            isActive ? 'border-primary-600/50 bg-dark-100 dark:bg-vault-dark-4' : ''
+                          }`}
+                        >
+                          <Link
+                            to={`/wallet/${walletAddress}`}
+                            className="block"
+                          >
+                            <WalletCard walletAddress={walletAddress} compact={true} />
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-              <span className="vault-badge">
-                {userWallets.length}
-              </span>
-            </div>
-            <div className="space-y-3">
-              {userWallets.map((walletAddress) => {
-                const isActive = location.pathname === `/wallet/${walletAddress}` || location.pathname.startsWith(`/wallet/${walletAddress}/`);
-                return (
-                  <div
-                    key={walletAddress}
-                    className={`vault-panel p-4 hover:border-primary-600/50 transition-all ${
-                      isActive ? 'border-primary-600/50 bg-dark-100 dark:bg-vault-dark-4' : ''
-                    }`}
+            )}
+
+            {/* Guardian Vaults */}
+            {guardianWallets && guardianWallets.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <button
+                    onClick={() => setGuardianVaultsCollapsed(!guardianVaultsCollapsed)}
+                    className="flex items-center gap-2 hover:opacity-70 transition-opacity"
                   >
-                    <Link
-                      to={`/wallet/${walletAddress}`}
-                      className="block"
+                    <svg
+                      className={`w-4 h-4 text-dark-500 transition-transform ${guardianVaultsCollapsed ? '-rotate-90' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
                     >
-                      <WalletCard walletAddress={walletAddress} compact={true} />
-                    </Link>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    <svg className="w-4 h-4 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <h2 className="text-base font-display font-bold text-dark-700 dark:text-dark-200 uppercase tracking-wider">
+                      Guardian
+                    </h2>
+                    {isRefetchingGuardianWallets && (
+                      <div className="w-5 h-5 border border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                    )}
+                  </button>
+                  <span className="vault-badge">
+                    {guardianWallets.length}
+                  </span>
+                </div>
+                {!guardianVaultsCollapsed && (
+                  <div className="space-y-3">
+                    {guardianWallets.map((walletAddress) => {
+                      const isActive = location.pathname === `/wallet/${walletAddress}` || location.pathname.startsWith(`/wallet/${walletAddress}/`);
+                      return (
+                        <div
+                          key={walletAddress}
+                          className={`vault-panel p-4 hover:border-primary-600/50 transition-all ${
+                            isActive ? 'border-primary-600/50 bg-dark-100 dark:bg-vault-dark-4' : ''
+                          }`}
+                        >
+                          <Link
+                            to={`/wallet/${walletAddress}`}
+                            className="block"
+                          >
+                            <WalletCard walletAddress={walletAddress} compact={true} />
+                          </Link>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

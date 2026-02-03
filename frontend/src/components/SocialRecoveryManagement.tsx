@@ -60,18 +60,18 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
   });
 
   // Query approval statuses for all recoveries
-  const { data: approvalStatuses, isLoading: isLoadingApprovals } = useQuery({
+  const { data: approvalStatuses, isLoading: isLoadingApprovals, refetch: refetchApprovalStatuses } = useQuery({
     queryKey: ['recoveryApprovalStatuses', walletAddress, connectedAddress, pendingRecoveries?.map(r => r.recoveryHash).join(',')],
     queryFn: async () => {
       if (!connectedAddress || !pendingRecoveries || pendingRecoveries.length === 0) {
         return new Map<string, boolean>();
       }
-      
+
       const statusMap = new Map<string, boolean>();
       await Promise.all(
         pendingRecoveries.map(async (recovery) => {
           try {
-            const hasApproved = await multisigService.hasApprovedRecovery(
+            const hasApproved = await multisigService.socialRecovery.hasApprovedRecovery(
               walletAddress,
               recovery.recoveryHash,
               connectedAddress
@@ -137,7 +137,11 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
       });
       queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['recoveryApprovalStatuses'] });
-      refetchRecoveries();
+      // Delay refetch to allow indexer to catch up
+      setTimeout(async () => {
+        await refetchRecoveries();
+        await refetchApprovalStatuses();
+      }, 5000);
     },
     onError: (error) => {
       setErrors([error instanceof Error ? error.message : 'Failed to approve recovery']);
@@ -156,8 +160,11 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
       });
       queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['walletInfo', walletAddress] });
-      refetchRecoveries();
-      onUpdate?.();
+      // Delay refetch to allow indexer to catch up
+      setTimeout(async () => {
+        await refetchRecoveries();
+        onUpdate?.();
+      }, 5000);
     },
     onError: (error) => {
       setErrors([error instanceof Error ? error.message : 'Failed to execute recovery']);
@@ -175,7 +182,10 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
         type: 'success',
       });
       queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
-      refetchRecoveries();
+      // Delay refetch to allow indexer to catch up
+      setTimeout(async () => {
+        await refetchRecoveries();
+      }, 5000);
     },
     onError: (error) => {
       setErrors([error instanceof Error ? error.message : 'Failed to cancel recovery']);
@@ -194,7 +204,11 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
       });
       queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['recoveryApprovalStatuses'] });
-      refetchRecoveries();
+      // Delay refetch to allow indexer to catch up
+      setTimeout(async () => {
+        await refetchRecoveries();
+        await refetchApprovalStatuses();
+      }, 5000);
     },
     onError: (error) => {
       setErrors([error instanceof Error ? error.message : 'Failed to revoke approval']);

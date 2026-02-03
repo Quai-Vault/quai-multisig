@@ -90,4 +90,37 @@ export class IndexerWalletService {
 
     return (data ?? []).map((owner: unknown) => WalletOwnerSchema.parse(owner));
   }
+
+  async getWalletsForGuardian(guardianAddress: string): Promise<Wallet[]> {
+    const client = this.ensureClient();
+    const validatedGuardian = validateAddress(guardianAddress);
+
+    const { data, error } = await client
+      .from('social_recovery_guardians')
+      .select(`
+        wallet_address,
+        wallets (*)
+      `)
+      .eq('guardian_address', validatedGuardian.toLowerCase())
+      .eq('is_active', true);
+
+    if (error) {
+      throw new Error(`Indexer query failed: ${error.message}`);
+    }
+
+    // Validate each wallet against schema
+    const wallets = (data ?? [])
+      .map((row: { wallet_address: string; wallets: unknown }) => row.wallets)
+      .filter(Boolean)
+      .map((wallet: unknown) => {
+        try {
+          return WalletSchema.parse(wallet);
+        } catch {
+          return null;
+        }
+      })
+      .filter((w): w is Wallet => w !== null);
+
+    return wallets;
+  }
 }

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
@@ -5,9 +6,30 @@ import { WalletCard } from '../components/WalletCard';
 import { EmptyState } from '../components/EmptyState';
 import { Logo } from '../components/Logo';
 
+const DASHBOARD_OWNER_VAULTS_COLLAPSED_KEY = 'dashboard-owner-vaults-collapsed';
+const DASHBOARD_GUARDIAN_VAULTS_COLLAPSED_KEY = 'dashboard-guardian-vaults-collapsed';
+
 export function Dashboard() {
   const { connected, connect } = useWallet();
-  const { userWallets, isLoadingWallets } = useMultisig();
+  const { userWallets, guardianWallets, isLoadingWallets, isLoadingGuardianWallets } = useMultisig();
+
+  const [ownerVaultsCollapsed, setOwnerVaultsCollapsed] = useState(() => {
+    const stored = localStorage.getItem(DASHBOARD_OWNER_VAULTS_COLLAPSED_KEY);
+    return stored === 'true';
+  });
+
+  const [guardianVaultsCollapsed, setGuardianVaultsCollapsed] = useState(() => {
+    const stored = localStorage.getItem(DASHBOARD_GUARDIAN_VAULTS_COLLAPSED_KEY);
+    return stored === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_OWNER_VAULTS_COLLAPSED_KEY, String(ownerVaultsCollapsed));
+  }, [ownerVaultsCollapsed]);
+
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_GUARDIAN_VAULTS_COLLAPSED_KEY, String(guardianVaultsCollapsed));
+  }, [guardianVaultsCollapsed]);
 
   // Not connected - show connect wallet CTA
   if (!connected) {
@@ -35,7 +57,7 @@ export function Dashboard() {
   }
 
   // Loading wallets
-  if (isLoadingWallets) {
+  if (isLoadingWallets || isLoadingGuardianWallets) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="vault-panel p-8 text-center">
@@ -50,7 +72,7 @@ export function Dashboard() {
   }
 
   // No vaults - show create vault CTA
-  if (!userWallets || userWallets.length === 0) {
+  if ((!userWallets || userWallets.length === 0) && (!guardianWallets || guardianWallets.length === 0)) {
     return (
       <div className="max-w-xl mx-auto">
         <EmptyState
@@ -73,23 +95,75 @@ export function Dashboard() {
 
   // Has vaults - show overview
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">
-          Your Vaults
-        </h1>
-        <Link to="/create" className="btn-primary inline-flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Create Vault
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {userWallets.map((walletAddress) => (
-          <WalletCard key={walletAddress} walletAddress={walletAddress} />
-        ))}
-      </div>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Owner Vaults */}
+      {userWallets && userWallets.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={() => setOwnerVaultsCollapsed(!ownerVaultsCollapsed)}
+              className="flex items-center gap-3 hover:opacity-70 transition-opacity"
+            >
+              <svg
+                className={`w-5 h-5 text-dark-500 transition-transform ${ownerVaultsCollapsed ? '-rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+              <h1 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">
+                Your Vaults
+              </h1>
+            </button>
+            <Link to="/create" className="btn-primary inline-flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Vault
+            </Link>
+          </div>
+          {!ownerVaultsCollapsed && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {userWallets.map((walletAddress) => (
+                <WalletCard key={walletAddress} walletAddress={walletAddress} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Guardian Vaults */}
+      {guardianWallets && guardianWallets.length > 0 && (
+        <div>
+          <button
+            onClick={() => setGuardianVaultsCollapsed(!guardianVaultsCollapsed)}
+            className="flex items-center gap-3 mb-6 hover:opacity-70 transition-opacity"
+          >
+            <svg
+              className={`w-5 h-5 text-dark-500 transition-transform ${guardianVaultsCollapsed ? '-rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            <svg className="w-6 h-6 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">
+              Guardian Vaults
+            </h2>
+          </button>
+          {!guardianVaultsCollapsed && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {guardianWallets.map((walletAddress) => (
+                <WalletCard key={walletAddress} walletAddress={walletAddress} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

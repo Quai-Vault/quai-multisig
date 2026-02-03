@@ -8,7 +8,6 @@ import { INDEXER_CONFIG } from '../config/supabase';
 import { indexerService } from '../services/indexer';
 import { convertIndexerTransaction } from '../services/utils/TransactionConverter';
 import { useIndexerConnection } from './useIndexerConnection';
-import { useOptimisticUpdates } from './useOptimisticUpdates';
 import type { DeploymentConfig, TransactionData, PendingTransaction } from '../types';
 import { formatQuai } from 'quais';
 import { canShowBrowserNotifications } from '../utils/notifications';
@@ -159,10 +158,6 @@ export function useMultisig(walletAddress?: string) {
     setWalletInfo,
     setPendingTransactions,
   } = useWalletStore();
-
-  // Optimistic updates hook for instant UI feedback
-  // Note: Hook must be called unconditionally, so we pass empty string if no wallet
-  const optimisticUpdates = useOptimisticUpdates(walletAddress || '');
 
   // Track previous balances for each wallet (using ref to persist across renders)
   const prevBalancesRef = useRef<Map<string, string>>(new Map());
@@ -518,29 +513,22 @@ export function useMultisig(walletAddress?: string) {
       onInsert: (tx) => {
         queueCacheUpdate(async () => {
           if (!isActive) return;
-          
+
           // Parallelize: fetch threshold and confirmations simultaneously
           const [threshold, confirmations] = await Promise.all([
             getThreshold(),
             indexerService.transaction.getActiveConfirmations(walletAddress, tx.tx_hash)
           ]);
-          
+
           if (!isActive) return;
 
           const converted = convertIndexerTransaction(tx, threshold, confirmations);
-          
-          // Cancel optimistic cleanup since real data arrived
-          optimisticUpdates?.cancelOptimisticCleanup(tx.tx_hash);
 
           queryClient.setQueryData<PendingTransaction[]>(
             ['pendingTransactions', walletAddress],
             (old = []) => {
-              // Remove any optimistic version first
-              const filtered = old.filter(
-                (t) => !t._optimistic || t.hash !== tx.tx_hash
-              );
               // Limit cache size to prevent unbounded growth
-              return [converted, ...filtered].slice(0, MAX_CACHE_TRANSACTIONS);
+              return [converted, ...old].slice(0, MAX_CACHE_TRANSACTIONS);
             }
           );
         });
@@ -548,19 +536,16 @@ export function useMultisig(walletAddress?: string) {
       onUpdate: (tx) => {
         queueCacheUpdate(async () => {
           if (!isActive) return;
-          
+
           // Parallelize: fetch threshold and confirmations simultaneously
           const [threshold, confirmations] = await Promise.all([
             getThreshold(),
             indexerService.transaction.getActiveConfirmations(walletAddress, tx.tx_hash)
           ]);
-          
+
           if (!isActive) return;
 
           const converted = convertIndexerTransaction(tx, threshold, confirmations);
-          
-          // Cancel optimistic cleanup since real data arrived
-          optimisticUpdates?.cancelOptimisticCleanup(tx.tx_hash);
 
           if (tx.status === 'executed' || tx.status === 'cancelled') {
             // Remove from pending
@@ -607,23 +592,20 @@ export function useMultisig(walletAddress?: string) {
       onInsert: (confirmation) => {
         queueCacheUpdate(async () => {
           if (!isActive) return;
-          
+
           // Get threshold (cached)
           const threshold = await getThreshold();
-          
+
           // Fetch transaction and all confirmations
           const [tx, confirmations] = await Promise.all([
             indexerService.transaction.getTransactionByHash(walletAddress, confirmation.tx_hash),
             indexerService.transaction.getActiveConfirmations(walletAddress, confirmation.tx_hash)
           ]);
-          
+
           if (!tx || !isActive) return;
-          
+
           const converted = convertIndexerTransaction(tx, threshold, confirmations);
-          
-          // Cancel optimistic cleanup since real data arrived
-          optimisticUpdates?.cancelOptimisticCleanup(confirmation.tx_hash);
-          
+
           // Update transaction in cache
           queryClient.setQueryData<PendingTransaction[]>(
             ['pendingTransactions', walletAddress],
@@ -808,7 +790,7 @@ export function useMultisig(walletAddress?: string) {
       unsubscribeSocialRecoveries();
       unsubscribeRecoveryApprovals();
     };
-  }, [walletAddress, isIndexerConnected, queryClient, optimisticUpdates]);
+  }, [walletAddress, isIndexerConnected, queryClient]);
 
   // Track pending transactions for notifications (new transactions, approvals, ready to execute)
   useEffect(() => {
@@ -1039,7 +1021,7 @@ export function useMultisig(walletAddress?: string) {
     notifiedCancelledTxs.set(normalizedWallet, walletCancelledSet);
   }, [cancelledTransactions, walletAddress]);
 
-  // Get wallets for connected address
+  // Get wallets for connected address (as owner)
   const {
     data: userWallets,
     isLoading: isLoadingWallets,
@@ -1050,6 +1032,23 @@ export function useMultisig(walletAddress?: string) {
     queryFn: async () => {
       if (!connectedAddress) return [];
       return await multisigService.getWalletsForOwner(connectedAddress);
+    },
+    enabled: !!connectedAddress && isPageVisible,
+    // Less frequent polling - wallet list doesn't change often
+    refetchInterval: isPageVisible ? POLLING_INTERVALS.USER_WALLETS : false,
+  });
+
+  // Get wallets for connected address (as guardian)
+  const {
+    data: guardianWallets,
+    isLoading: isLoadingGuardianWallets,
+    refetch: refetchGuardianWallets,
+    isRefetching: isRefetchingGuardianWallets,
+  } = useQuery({
+    queryKey: ['guardianWallets', connectedAddress],
+    queryFn: async () => {
+      if (!connectedAddress) return [];
+      return await multisigService.getWalletsForGuardian(connectedAddress);
     },
     enabled: !!connectedAddress && isPageVisible,
     // Less frequent polling - wallet list doesn't change often
@@ -1090,31 +1089,14 @@ export function useMultisig(walletAddress?: string) {
         const walletProposedSet = notifiedProposedTxs.get(normalizedWallet) ?? new Set();
         walletProposedSet.add(txHash.toLowerCase());
         notifiedProposedTxs.set(normalizedWallet, walletProposedSet);
-
-        // Add optimistic transaction immediately so UI updates fast
-        // Get fresh connected address from store
-        const currentConnectedAddress = useWalletStore.getState().address;
-        if (currentConnectedAddress) {
-          optimisticUpdates.addOptimisticTransaction({
-            hash: txHash,
-            to: variables.to,
-            value: variables.value,
-            data: variables.data || '0x',
-            numApprovals: 1, // Proposer approves automatically
-            threshold: walletInfo?.threshold || 1,
-            proposer: currentConnectedAddress,
-            approvals: { [currentConnectedAddress]: true },
-            timestamp: Date.now() / 1000,
-          });
-          // Schedule cleanup to replace with real data
-          optimisticUpdates.scheduleOptimisticCleanup(txHash);
-        }
       }
       // Show success notification when you propose a transaction
       notificationManager.add({
         message: `Transaction proposed successfully! Hash: ${txHash?.slice(0, 10)}...${txHash?.slice(-6)}`,
         type: 'success',
       });
+      // Invalidate queries to refetch and show the new transaction
+      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to propose transaction');
@@ -1131,22 +1113,12 @@ export function useMultisig(walletAddress?: string) {
     mutationFn: async ({ walletAddress, txHash }: { walletAddress: string; txHash: string }) => {
       return await multisigService.approveTransaction(walletAddress, txHash);
     },
-    onMutate: async ({ walletAddress: mutationWallet, txHash }) => {
-      // Get fresh connected address from store to avoid stale closure
-      const currentConnectedAddress = useWalletStore.getState().address;
-      // Optimistically update UI immediately
-      if (mutationWallet && currentConnectedAddress) {
-        optimisticUpdates.updateOptimisticApproval(txHash, currentConnectedAddress);
-        optimisticUpdates.scheduleOptimisticCleanup(txHash);
-      }
-    },
-    onSuccess: () => {
-      // Don't invalidate - subscription will update, or cleanup timeout will handle it
-      // This prevents unnecessary refetch and keeps UI responsive
+    onSuccess: (_, variables) => {
+      // Invalidate queries to refetch and show updated approval
+      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
     onError: (error, variables) => {
       setError(error instanceof Error ? error.message : 'Failed to approve transaction');
-      // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
   });
@@ -1156,21 +1128,12 @@ export function useMultisig(walletAddress?: string) {
     mutationFn: async ({ walletAddress, txHash }: { walletAddress: string; txHash: string }) => {
       return await multisigService.revokeApproval(walletAddress, txHash);
     },
-    onMutate: async ({ walletAddress: mutationWallet, txHash }) => {
-      // Get fresh connected address from store to avoid stale closure
-      const currentConnectedAddress = useWalletStore.getState().address;
-      // Optimistically update UI immediately
-      if (mutationWallet && currentConnectedAddress) {
-        optimisticUpdates.updateOptimisticRevocation(txHash, currentConnectedAddress);
-        optimisticUpdates.scheduleOptimisticCleanup(txHash);
-      }
-    },
-    onSuccess: () => {
-      // Don't invalidate - subscription will update, or cleanup timeout will handle it
+    onSuccess: (_, variables) => {
+      // Invalidate queries to refetch and show updated approval
+      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
     onError: (error, variables) => {
       setError(error instanceof Error ? error.message : 'Failed to revoke approval');
-      // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
   });
@@ -1361,6 +1324,7 @@ export function useMultisig(walletAddress?: string) {
         refetchWalletInfo(),
         refetchTransactions(),
         refetchUserWallets(),
+        refetchGuardianWallets(),
         refetchCancelled(),
       ]);
     } finally {
@@ -1371,7 +1335,7 @@ export function useMultisig(walletAddress?: string) {
       }, 500);
       mutationTimeoutsRef.current.add(timeoutId);
     }
-  }, [refetchWalletInfo, refetchTransactions, refetchUserWallets, refetchCancelled]);
+  }, [refetchWalletInfo, refetchTransactions, refetchUserWallets, refetchGuardianWallets, refetchCancelled]);
 
   // Cleanup mutation timeouts on unmount
   useEffect(() => {
@@ -1388,14 +1352,16 @@ export function useMultisig(walletAddress?: string) {
     executedTransactions,
     cancelledTransactions,
     userWallets,
+    guardianWallets,
 
     // Loading states
-    isLoading: isLoadingInfo || isLoadingTransactions || isLoadingHistory || isLoadingCancelled || isLoadingWallets,
+    isLoading: isLoadingInfo || isLoadingTransactions || isLoadingHistory || isLoadingCancelled || isLoadingWallets || isLoadingGuardianWallets,
     isLoadingInfo,
     isLoadingTransactions,
     isLoadingHistory,
     isLoadingCancelled,
     isLoadingWallets,
+    isLoadingGuardianWallets,
 
     // Refreshing states (for visual indicators)
     // Only show refetching when manually refreshing or polling (not during subscription updates)
@@ -1404,6 +1370,7 @@ export function useMultisig(walletAddress?: string) {
     isRefetchingHistory: isRefetchingHistory && isManuallyRefreshing,
     isRefetchingCancelled: isRefetchingCancelled && isManuallyRefreshing,
     isRefetchingWallets: isRefetchingWallets && isManuallyRefreshing,
+    isRefetchingGuardianWallets: isRefetchingGuardianWallets && isManuallyRefreshing,
 
     // Mutations
     deployWallet: deployWallet.mutate,
