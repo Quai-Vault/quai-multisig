@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useWalletStore } from '../store/walletStore';
 import { Sidebar } from './Sidebar';
@@ -10,8 +10,20 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'sidebar-collapsed';
+
 export function Layout({ children }: LayoutProps) {
   const { error, setError } = useWalletStore();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+    return stored === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const toggleSidebar = () => setSidebarCollapsed((prev) => !prev);
 
   return (
     <div className="min-h-screen bg-dark-50 dark:bg-vault-black relative">
@@ -25,7 +37,16 @@ export function Layout({ children }: LayoutProps) {
       <header className="fixed top-0 left-0 right-0 h-14 vault-panel border-b-2 border-dark-200 dark:border-dark-700 z-30">
         <nav className="h-full px-6">
           <div className="flex justify-between h-full items-center">
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-lg text-dark-400 dark:text-dark-500 hover:text-primary-500 dark:hover:text-primary-400 hover:bg-dark-100 dark:hover:bg-vault-dark-4 transition-colors"
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <Link
                 to="/"
                 className="flex items-center gap-3 group"
@@ -76,12 +97,12 @@ export function Layout({ children }: LayoutProps) {
         </nav>
       </header>
 
-      {/* Sidebar - Below top bar, narrow */}
-      <Sidebar />
+      {/* Sidebar - Below top bar, collapsible */}
+      <Sidebar collapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* Error Banner - Fixed below navbar */}
       {error && (
-        <div className="fixed left-64 top-14 right-0 z-20 bg-gradient-to-r from-primary-900/90 via-primary-800/90 to-primary-900/90 border-b-2 border-primary-600 p-4.5 shadow-red-glow-lg backdrop-blur-sm">
+        <div className={`fixed top-14 right-0 z-20 bg-gradient-to-r from-primary-900/90 via-primary-800/90 to-primary-900/90 border-b-2 border-primary-600 p-4.5 shadow-red-glow-lg backdrop-blur-sm transition-all duration-300 ${sidebarCollapsed ? 'left-0' : 'left-64'}`}>
           <div className="flex max-w-full mx-auto px-5 items-center">
             <div className="flex-1">
               <p className="text-base font-semibold text-primary-100 flex items-center gap-4.5">
@@ -109,7 +130,7 @@ export function Layout({ children }: LayoutProps) {
       )}
 
       {/* Main Content Area - Offset by sidebar and navbar */}
-      <main className={`relative z-0 ml-64 ${error ? 'pt-24' : 'pt-14'} min-h-screen pb-6`}>
+      <main className={`relative z-0 transition-all duration-300 ${sidebarCollapsed ? 'ml-0' : 'ml-64'} ${error ? 'pt-24' : 'pt-14'} min-h-screen pb-6`}>
         <div className="px-5 py-4">
           {children}
         </div>
@@ -119,7 +140,7 @@ export function Layout({ children }: LayoutProps) {
       <NotificationContainer />
 
       {/* Footer */}
-      <footer className="relative z-10 vault-panel border-t-2 border-dark-200 dark:border-dark-700 ml-64">
+      <footer className={`relative z-10 vault-panel border-t-2 border-dark-200 dark:border-dark-700 transition-all duration-300 ${sidebarCollapsed ? 'ml-0' : 'ml-64'}`}>
         <div className="px-5 py-3">
           <div className="flex flex-col items-center gap-4.5">
             <div className="flex items-center gap-2">

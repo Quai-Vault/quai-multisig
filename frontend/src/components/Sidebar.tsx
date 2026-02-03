@@ -1,4 +1,4 @@
-import { useCallback, memo } from 'react';
+import { memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
@@ -9,13 +9,26 @@ import { ThemeToggle } from './ThemeToggle';
 // Memoize formatAddress outside component to avoid recreation
 const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 
-export const Sidebar = memo(function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export const Sidebar = memo(function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { connect, disconnect, connected, address } = useWallet();
   const { userWallets, isLoadingWallets, isRefetchingWallets } = useMultisig();
   const location = useLocation();
 
   return (
-    <aside className="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-white dark:bg-vault-dark-2 border-r-2 border-dark-200 dark:border-dark-700 flex flex-col z-20 overflow-hidden">
+    <>
+      {/* Overlay for mobile when sidebar is open */}
+      {!collapsed && (
+        <div
+          className="fixed inset-0 bg-black/50 z-10 lg:hidden"
+          onClick={onToggle}
+        />
+      )}
+      <aside className={`fixed left-0 top-14 h-[calc(100vh-3.5rem)] bg-white dark:bg-vault-dark-2 border-r-2 border-dark-200 dark:border-dark-700 flex flex-col z-20 overflow-hidden transition-all duration-300 ${collapsed ? '-translate-x-full lg:translate-x-0 lg:w-0 lg:border-r-0' : 'w-64 translate-x-0'}`}>
 
       {/* Wallet Connect/Disconnect */}
       <div className="px-4 py-4 border-b border-dark-200 dark:border-dark-700">
@@ -139,9 +152,10 @@ export const Sidebar = memo(function Sidebar() {
       </div>
 
       {/* Theme Toggle */}
-      <div className="mt-auto px-4 py-4 border-t border-dark-200 dark:border-dark-700">
-        <ThemeToggle />
-      </div>
-    </aside>
+        <div className="mt-auto px-4 py-4 border-t border-dark-200 dark:border-dark-700">
+          <ThemeToggle />
+        </div>
+      </aside>
+    </>
   );
 });
