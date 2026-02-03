@@ -17,6 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
     "@tanstack/react-query": "^5.17.9",
+    "@tanstack/react-virtual": "^3.13.18",
     "quais": "^1.0.0-alpha.36",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

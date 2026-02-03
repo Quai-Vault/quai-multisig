@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { Modal } from '../Modal';
 import { TransactionFlow } from '../TransactionFlow';
 import type { PendingTransaction } from '../../types';
 import { useMultisig } from '../../hooks/useMultisig';
+import { useSimpleTransactionModalFlow } from '../../hooks/useTransactionModalFlow';
 
 interface RevokeApprovalModalProps {
   isOpen: boolean;
@@ -18,25 +18,25 @@ export function RevokeApprovalModal({
   walletAddress,
 }: RevokeApprovalModalProps) {
   const { revokeApprovalAsync, refreshTransactions } = useMultisig(walletAddress);
-  const [resetKey, setResetKey] = useState(0);
+  const resetKey = useSimpleTransactionModalFlow(isOpen);
 
   const handleRevoke = async (onProgress: (progress: any) => void) => {
     try {
       onProgress({ step: 'signing', message: 'Please approve the revocation in your wallet' });
-      
+
       await revokeApprovalAsync({
         walletAddress,
         txHash: transaction.hash,
       });
-      
+
       onProgress({ step: 'waiting', txHash: '', message: 'Waiting for transaction confirmation...' });
-      
+
       // Wait for transaction to be mined
       await new Promise(resolve => setTimeout(resolve, 3000));
-      
+
       // Refresh transactions to update UI
       await refreshTransactions();
-      
+
       return '';
     } catch (error) {
       console.error('Error revoking approval:', error);
@@ -44,20 +44,10 @@ export function RevokeApprovalModal({
     }
   };
 
-  const handleComplete = () => {
-    setResetKey(prev => prev + 1);
-    onClose();
-  };
-
-  const handleCancel = () => {
-    setResetKey(prev => prev + 1);
-    onClose();
-  };
-
   return (
     <Modal
       isOpen={isOpen}
-      onClose={handleCancel}
+      onClose={onClose}
       title="Revoke Approval"
       size="lg"
     >
@@ -86,8 +76,8 @@ export function RevokeApprovalModal({
           title="Revoke Approval"
           description="Revoking your approval for this transaction"
           onExecute={handleRevoke}
-          onComplete={handleComplete}
-          onCancel={handleCancel}
+          onComplete={onClose}
+          onCancel={onClose}
           successMessage="Approval revoked successfully!"
           resetKey={resetKey}
         />

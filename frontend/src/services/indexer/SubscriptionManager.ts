@@ -1,11 +1,42 @@
 import { INDEXER_CONFIG } from '../../config/supabase';
 import { IndexerSubscriptionService, type SubscriptionCallbacks } from './IndexerSubscriptionService';
-import type { IndexerTransaction, Deposit } from '../../types/database';
+import type {
+  IndexerTransaction,
+  Deposit,
+  DailyLimitState,
+  WhitelistEntry,
+  WalletModule,
+  WalletOwner,
+  SocialRecovery,
+  RecoveryApproval,
+} from '../../types/database';
 
 export interface WalletSubscriptionCallbacks {
+  // Transaction subscriptions
   onTransactionInsert?: (tx: IndexerTransaction) => void;
   onTransactionUpdate?: (tx: IndexerTransaction) => void;
+  // Deposit subscriptions
   onDepositInsert?: (deposit: Deposit) => void;
+  // Daily limit state subscriptions
+  onDailyLimitStateInsert?: (state: DailyLimitState) => void;
+  onDailyLimitStateUpdate?: (state: DailyLimitState) => void;
+  // Whitelist entry subscriptions
+  onWhitelistEntryInsert?: (entry: WhitelistEntry) => void;
+  onWhitelistEntryUpdate?: (entry: WhitelistEntry) => void;
+  onWhitelistEntryDelete?: (entry: WhitelistEntry) => void;
+  // Wallet module subscriptions
+  onWalletModuleInsert?: (module: WalletModule) => void;
+  onWalletModuleUpdate?: (module: WalletModule) => void;
+  // Wallet owner subscriptions
+  onWalletOwnerInsert?: (owner: WalletOwner) => void;
+  onWalletOwnerUpdate?: (owner: WalletOwner) => void;
+  // Social recovery subscriptions
+  onSocialRecoveryInsert?: (recovery: SocialRecovery) => void;
+  onSocialRecoveryUpdate?: (recovery: SocialRecovery) => void;
+  // Recovery approval subscriptions
+  onRecoveryApprovalInsert?: (approval: RecoveryApproval) => void;
+  onRecoveryApprovalUpdate?: (approval: RecoveryApproval) => void;
+  // Error handling
   onError?: (error: Error) => void;
   /** Called when this wallet is evicted due to subscription limit */
   onEvicted?: (walletAddress: string) => void;
@@ -67,6 +98,67 @@ export class SubscriptionManager {
         onError: callbacks.onError,
       });
       unsubscribers.push(unsubDeposit);
+    }
+
+    // Subscribe to daily limit state
+    if (callbacks.onDailyLimitStateInsert || callbacks.onDailyLimitStateUpdate) {
+      const unsubDailyLimit = this.subscriptionService.subscribeToDailyLimitState(normalizedAddress, {
+        onInsert: callbacks.onDailyLimitStateInsert,
+        onUpdate: callbacks.onDailyLimitStateUpdate,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubDailyLimit);
+    }
+
+    // Subscribe to whitelist entries
+    if (callbacks.onWhitelistEntryInsert || callbacks.onWhitelistEntryUpdate || callbacks.onWhitelistEntryDelete) {
+      const unsubWhitelist = this.subscriptionService.subscribeToWhitelistEntries(normalizedAddress, {
+        onInsert: callbacks.onWhitelistEntryInsert,
+        onUpdate: callbacks.onWhitelistEntryUpdate,
+        onDelete: callbacks.onWhitelistEntryDelete,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubWhitelist);
+    }
+
+    // Subscribe to wallet modules
+    if (callbacks.onWalletModuleInsert || callbacks.onWalletModuleUpdate) {
+      const unsubModules = this.subscriptionService.subscribeToWalletModules(normalizedAddress, {
+        onInsert: callbacks.onWalletModuleInsert,
+        onUpdate: callbacks.onWalletModuleUpdate,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubModules);
+    }
+
+    // Subscribe to wallet owners
+    if (callbacks.onWalletOwnerInsert || callbacks.onWalletOwnerUpdate) {
+      const unsubOwners = this.subscriptionService.subscribeToWalletOwners(normalizedAddress, {
+        onInsert: callbacks.onWalletOwnerInsert,
+        onUpdate: callbacks.onWalletOwnerUpdate,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubOwners);
+    }
+
+    // Subscribe to social recoveries
+    if (callbacks.onSocialRecoveryInsert || callbacks.onSocialRecoveryUpdate) {
+      const unsubRecoveries = this.subscriptionService.subscribeToSocialRecoveries(normalizedAddress, {
+        onInsert: callbacks.onSocialRecoveryInsert,
+        onUpdate: callbacks.onSocialRecoveryUpdate,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubRecoveries);
+    }
+
+    // Subscribe to recovery approvals
+    if (callbacks.onRecoveryApprovalInsert || callbacks.onRecoveryApprovalUpdate) {
+      const unsubApprovals = this.subscriptionService.subscribeToRecoveryApprovals(normalizedAddress, {
+        onInsert: callbacks.onRecoveryApprovalInsert,
+        onUpdate: callbacks.onRecoveryApprovalUpdate,
+        onError: callbacks.onError,
+      });
+      unsubscribers.push(unsubApprovals);
     }
 
     this.activeWallets.add(normalizedAddress);

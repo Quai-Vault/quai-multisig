@@ -222,7 +222,7 @@ export function DailyLimitConfiguration({ walletAddress, onUpdate }: DailyLimitC
                         : 'Loading...'}
                     </span>
                   </div>
-                  {timeUntilReset !== undefined && (
+                  {timeUntilReset !== undefined && timeUntilReset > 0n && (
                     <div className="flex justify-between items-center">
                       <span className="text-base font-mono text-dark-400 dark:text-dark-500 uppercase tracking-wider">Resets In:</span>
                       <span className="text-dark-700 dark:text-dark-200 font-semibold">

@@ -1,6 +1,6 @@
 import { getAddress } from 'quais';
 import type { Provider, Signer } from '../types';
-import type { WalletInfo, Transaction, PendingTransaction } from '../types';
+import type { WalletInfo, Transaction, PendingTransaction, DeploymentConfig } from '../types';
 
 // Import specialized services
 import { WalletService } from './core/WalletService';
@@ -104,6 +104,25 @@ export class MultisigService {
     this.whitelist.setSigner(signer);
     this.dailyLimit.setSigner(signer);
     this.socialRecovery.setSigner(signer);
+  }
+
+  /**
+   * Deploy a new multisig wallet
+   * @param config Deployment configuration (owners and threshold)
+   * @param onProgress Optional progress callback for deployment steps
+   * @returns Promise resolving to the deployed wallet address
+   */
+  async deployWallet(
+    config: DeploymentConfig,
+    onProgress?: (progress: {
+      step: 'deploying' | 'deploying_waiting' | 'registering' | 'registering_waiting' | 'verifying' | 'success';
+      deployTxHash?: string;
+      registerTxHash?: string;
+      walletAddress?: string;
+      message?: string;
+    }) => void
+  ): Promise<string> {
+    return this.wallet.deployWallet(config, onProgress);
   }
 
   // ============ Indexer-First Wallet Methods ============
@@ -448,8 +467,32 @@ export class MultisigService {
   }
 
   // ============ Indexer-First Whitelist Methods ============
-  // For whitelist writes, use: multisigService.whitelist.method()
   // For owner/module operations, use: multisigService.owner.method()
+
+  /**
+   * Propose adding an address to the whitelist (requires multisig approval)
+   * @param walletAddress Address of the multisig wallet
+   * @param address Address to add to whitelist
+   * @param limit Optional spending limit for this address (defaults to 0 = unlimited)
+   * @returns Transaction hash for the multisig proposal
+   */
+  async proposeAddToWhitelist(
+    walletAddress: string,
+    address: string,
+    limit: bigint = 0n
+  ): Promise<string> {
+    return this.whitelist.proposeAddToWhitelist(walletAddress, address, limit);
+  }
+
+  /**
+   * Propose removing an address from the whitelist (requires multisig approval)
+   * @param walletAddress Address of the multisig wallet
+   * @param address Address to remove from whitelist
+   * @returns Transaction hash for the multisig proposal
+   */
+  async proposeRemoveFromWhitelist(walletAddress: string, address: string): Promise<string> {
+    return this.whitelist.proposeRemoveFromWhitelist(walletAddress, address);
+  }
 
   async isWhitelisted(walletAddress: string, address: string): Promise<boolean> {
     // Try indexer first for faster response
@@ -505,8 +548,41 @@ export class MultisigService {
     return this.whitelist.getWhitelistedAddresses(walletAddress);
   }
 
+  /**
+   * Check if a transaction can bypass multisig approval via whitelist module
+   * @param walletAddress Address of the multisig wallet
+   * @param to Destination address
+   * @param value Amount to transfer in wei
+   * @returns Object with canExecute flag and optional reason if cannot execute
+   */
+  async canExecuteViaWhitelist(
+    walletAddress: string,
+    to: string,
+    value: bigint
+  ): Promise<{ canExecute: boolean; reason?: string }> {
+    return this.whitelist.canExecuteViaWhitelist(walletAddress, to, value);
+  }
+
   // ============ Indexer-First Daily Limit Methods ============
-  // For daily limit writes, use: multisigService.dailyLimit.method()
+
+  /**
+   * Propose setting the daily spending limit (requires multisig approval)
+   * @param walletAddress Address of the multisig wallet
+   * @param limit Daily spending limit in wei
+   * @returns Transaction hash for the multisig proposal
+   */
+  async proposeSetDailyLimit(walletAddress: string, limit: bigint): Promise<string> {
+    return this.dailyLimit.proposeSetDailyLimit(walletAddress, limit);
+  }
+
+  /**
+   * Propose resetting the daily limit (requires multisig approval)
+   * @param walletAddress Address of the multisig wallet
+   * @returns Transaction hash for the multisig proposal
+   */
+  async proposeResetDailyLimit(walletAddress: string): Promise<string> {
+    return this.dailyLimit.proposeResetDailyLimit(walletAddress);
+  }
 
   async getDailyLimit(walletAddress: string): Promise<{ limit: bigint; spent: bigint; lastReset: bigint }> {
     // Try indexer first for faster response
@@ -530,13 +606,111 @@ export class MultisigService {
     return this.dailyLimit.getDailyLimit(walletAddress);
   }
 
+  /**
+   * Check if a transaction can bypass multisig approval via daily limit module
+   * @param walletAddress Address of the multisig wallet
+   * @param value Amount to transfer in wei
+   * @returns Object with canExecute flag and optional reason if cannot execute
+   */
+  async canExecuteViaDailyLimit(
+    walletAddress: string,
+    value: bigint
+  ): Promise<{ canExecute: boolean; reason?: string }> {
+    return this.dailyLimit.canExecuteViaDailyLimit(walletAddress, value);
+  }
+
+  /**
+   * Get remaining daily limit that can still be spent today
+   * @param walletAddress Address of the multisig wallet
+   * @returns Remaining limit in wei
+   */
+  async getRemainingLimit(walletAddress: string): Promise<bigint> {
+    return this.dailyLimit.getRemainingLimit(walletAddress);
+  }
+
+  /**
+   * Get time until the daily limit resets
+   * @param walletAddress Address of the multisig wallet
+   * @returns Time in seconds until reset
+   */
+  async getTimeUntilReset(walletAddress: string): Promise<bigint> {
+    return this.dailyLimit.getTimeUntilReset(walletAddress);
+  }
+
   // ============ Indexer-First Social Recovery Methods ============
-  // For social recovery writes, use: multisigService.socialRecovery.method()
+
+  /**
+   * Propose setting up recovery configuration (requires multisig approval)
+   * @param walletAddress Address of the multisig wallet
+   * @param guardians Array of guardian addresses
+   * @param threshold Number of guardian approvals required
+   * @param recoveryPeriodDays Recovery period in days (minimum 1)
+   * @returns Transaction hash for the multisig proposal
+   */
+  async proposeSetupRecovery(
+    walletAddress: string,
+    guardians: string[],
+    threshold: number,
+    recoveryPeriodDays: number
+  ): Promise<string> {
+    return this.socialRecovery.proposeSetupRecovery(walletAddress, guardians, threshold, recoveryPeriodDays);
+  }
+
+  /**
+   * Initiate recovery process (guardians only)
+   * @param walletAddress Address of the multisig wallet
+   * @param newOwners Array of new owner addresses
+   * @param newThreshold New threshold value
+   * @returns Recovery hash
+   */
+  async initiateRecovery(
+    walletAddress: string,
+    newOwners: string[],
+    newThreshold: number
+  ): Promise<string> {
+    return this.socialRecovery.initiateRecovery(walletAddress, newOwners, newThreshold);
+  }
+
+  /**
+   * Approve a recovery (guardians only)
+   * @param walletAddress Address of the multisig wallet
+   * @param recoveryHash Hash of the recovery to approve
+   */
+  async approveRecovery(walletAddress: string, recoveryHash: string): Promise<void> {
+    return this.socialRecovery.approveRecovery(walletAddress, recoveryHash);
+  }
+
+  /**
+   * Execute recovery after threshold is met and time delay has passed
+   * @param walletAddress Address of the multisig wallet
+   * @param recoveryHash Hash of the recovery to execute
+   */
+  async executeRecovery(walletAddress: string, recoveryHash: string): Promise<void> {
+    return this.socialRecovery.executeRecovery(walletAddress, recoveryHash);
+  }
+
+  /**
+   * Cancel a recovery (owners only)
+   * @param walletAddress Address of the multisig wallet
+   * @param recoveryHash Hash of the recovery to cancel
+   */
+  async cancelRecovery(walletAddress: string, recoveryHash: string): Promise<void> {
+    return this.socialRecovery.cancelRecovery(walletAddress, recoveryHash);
+  }
+
+  /**
+   * Revoke recovery approval (guardians only)
+   * @param walletAddress Address of the multisig wallet
+   * @param recoveryHash Hash of the recovery
+   */
+  async revokeRecoveryApproval(walletAddress: string, recoveryHash: string): Promise<void> {
+    return this.socialRecovery.revokeRecoveryApproval(walletAddress, recoveryHash);
+  }
 
   async getRecoveryConfig(walletAddress: string): Promise<{
     guardians: string[];
-    threshold: bigint;
-    recoveryPeriod: bigint;
+    threshold: number;
+    recoveryPeriod: number;
   }> {
     // Try indexer first for faster response
     if (await this.isIndexerAvailable()) {
@@ -545,17 +719,27 @@ export class MultisigService {
         if (config) {
           return {
             guardians: config.guardians,
-            threshold: BigInt(config.threshold),
-            recoveryPeriod: BigInt(config.recoveryPeriod),
+            threshold: Number(config.threshold),
+            recoveryPeriod: Number(config.recoveryPeriod),
           };
         }
-      } catch {
-        // Silently fall back to blockchain
+        // No config found in indexer, fall through to blockchain
+      } catch (error) {
+        // Silently fall back to blockchain - table may not exist in indexer schema
+        const errorMessage = error instanceof Error ? error.message : '';
+        if (!errorMessage.includes('table not available')) {
+          console.debug('Indexer recovery config failed, using blockchain:', errorMessage || 'Unknown error');
+        }
       }
     }
 
-    // Fallback to blockchain
-    return this.socialRecovery.getRecoveryConfig(walletAddress);
+    // Fallback to blockchain - convert bigint to number for React Query serialization
+    const blockchainConfig = await this.socialRecovery.getRecoveryConfig(walletAddress);
+    return {
+      guardians: blockchainConfig.guardians,
+      threshold: Number(blockchainConfig.threshold),
+      recoveryPeriod: Number(blockchainConfig.recoveryPeriod),
+    };
   }
 
   async isGuardian(walletAddress: string, address: string): Promise<boolean> {
@@ -567,9 +751,9 @@ export class MultisigService {
           const normalizedAddress = address.toLowerCase();
           return config.guardians.some((g) => g.toLowerCase() === normalizedAddress);
         }
-        return false; // No recovery config means no guardians
+        // No recovery config found, fall through to blockchain to confirm
       } catch {
-        // Silently fall back to blockchain
+        // Silently fall back to blockchain - table may not exist
       }
     }
 
@@ -580,9 +764,9 @@ export class MultisigService {
   async getPendingRecoveries(walletAddress: string): Promise<Array<{
     recoveryHash: string;
     newOwners: string[];
-    newThreshold: bigint;
-    approvalCount: bigint;
-    executionTime: bigint;
+    newThreshold: number;
+    approvalCount: number;
+    executionTime: number;
     executed: boolean;
   }>> {
     // Try indexer first for faster response (no block range limitations)
@@ -592,9 +776,9 @@ export class MultisigService {
         return recoveries.map((r) => ({
           recoveryHash: r.recoveryHash,
           newOwners: r.newOwners,
-          newThreshold: BigInt(r.newThreshold),
-          approvalCount: BigInt(r.approvalCount),
-          executionTime: BigInt(r.executionTime),
+          newThreshold: Number(r.newThreshold),
+          approvalCount: Number(r.approvalCount),
+          executionTime: Number(r.executionTime),
           executed: false, // Indexer only returns pending (non-executed) recoveries
         }));
       } catch {
@@ -602,8 +786,16 @@ export class MultisigService {
       }
     }
 
-    // Fallback to blockchain (limited to recent blocks)
-    return this.socialRecovery.getPendingRecoveries(walletAddress);
+    // Fallback to blockchain (limited to recent blocks) - convert bigint to number for React Query
+    const blockchainRecoveries = await this.socialRecovery.getPendingRecoveries(walletAddress);
+    return blockchainRecoveries.map((r) => ({
+      recoveryHash: r.recoveryHash,
+      newOwners: r.newOwners,
+      newThreshold: Number(r.newThreshold),
+      approvalCount: Number(r.approvalCount),
+      executionTime: Number(r.executionTime),
+      executed: r.executed,
+    }));
   }
 }
 

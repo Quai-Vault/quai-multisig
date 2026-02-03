@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export interface UsePaginationOptions {
   initialLimit?: number;
@@ -42,8 +42,19 @@ export function usePagination<T>(
   const [page, setPageState] = useState(0);
   const limit = initialLimit;
 
+  // Track if initial load has happened to prevent duplicate loads
+  const hasInitialLoadRef = useRef(false);
+  // Track current loading page to prevent concurrent duplicate loads
+  const loadingPageRef = useRef<number | null>(null);
+
   const loadPage = useCallback(
     async (pageNum: number, append = false) => {
+      // Guard against duplicate concurrent loads of the same page
+      if (loadingPageRef.current === pageNum) {
+        return;
+      }
+      loadingPageRef.current = pageNum;
+
       setIsLoading(true);
       try {
         const result = await fetchFn({
@@ -57,6 +68,7 @@ export function usePagination<T>(
         setPageState(pageNum);
       } finally {
         setIsLoading(false);
+        loadingPageRef.current = null;
       }
     },
     [fetchFn, limit]
@@ -83,9 +95,12 @@ export function usePagination<T>(
     [loadPage]
   );
 
-  // Load initial page on mount
+  // Load initial page on mount (only once)
   useEffect(() => {
-    loadPage(0);
+    if (!hasInitialLoadRef.current) {
+      hasInitialLoadRef.current = true;
+      loadPage(0);
+    }
   }, [loadPage]);
 
   return {

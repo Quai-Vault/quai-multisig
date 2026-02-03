@@ -51,12 +51,43 @@ export class SocialRecoveryModuleService extends BaseModuleService {
    */
   async getRecoveryConfig(walletAddress: string): Promise<RecoveryConfig> {
     const module = this.getModuleContract();
-    const config = await module.getRecoveryConfig(walletAddress);
-    return {
-      guardians: config.guardians || [],
-      threshold: config.threshold || 0n,
-      recoveryPeriod: config.recoveryPeriod || 0n,
-    };
+    try {
+      const config = await module.getRecoveryConfig(walletAddress);
+
+      // Handle both array-style (tuple) and object-style returns from quais
+      // The contract returns a struct, which may come as an array [guardians, threshold, recoveryPeriod]
+      // or as an object with named properties depending on quais version
+      let guardians: string[];
+      let threshold: bigint;
+      let recoveryPeriod: bigint;
+
+      if (Array.isArray(config)) {
+        // Tuple-style: [guardians[], threshold, recoveryPeriod]
+        guardians = config[0] || [];
+        threshold = config[1] ?? 0n;
+        recoveryPeriod = config[2] ?? 0n;
+      } else {
+        // Object-style: { guardians, threshold, recoveryPeriod }
+        guardians = config.guardians || [];
+        threshold = config.threshold ?? 0n;
+        recoveryPeriod = config.recoveryPeriod ?? 0n;
+      }
+
+      // Ensure BigInt conversion (may come as number from some providers)
+      return {
+        guardians: Array.isArray(guardians) ? guardians : [],
+        threshold: typeof threshold === 'bigint' ? threshold : BigInt(threshold || 0),
+        recoveryPeriod: typeof recoveryPeriod === 'bigint' ? recoveryPeriod : BigInt(recoveryPeriod || 0),
+      };
+    } catch (error) {
+      // If the call fails (e.g., no recovery configured), return empty config
+      console.debug('getRecoveryConfig failed, returning empty config:', error instanceof Error ? error.message : 'Unknown error');
+      return {
+        guardians: [],
+        threshold: 0n,
+        recoveryPeriod: 0n,
+      };
+    }
   }
 
   /**

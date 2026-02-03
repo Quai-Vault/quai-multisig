@@ -258,16 +258,16 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
     initiateRecovery.mutate({ newOwners: validOwners, newThreshold });
   };
 
-  const formatTimeUntilExecution = (executionTime: bigint): string => {
-    const now = BigInt(Math.floor(Date.now() / 1000));
-    if (executionTime <= now) {
+  const formatTimeUntilExecution = (executionTime: number): string => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (executionTime <= nowSeconds) {
       return 'Ready to execute';
     }
-    const secondsRemaining = Number(executionTime - now);
+    const secondsRemaining = executionTime - nowSeconds;
     const days = Math.floor(secondsRemaining / 86400);
     const hours = Math.floor((secondsRemaining % 86400) / 3600);
     const minutes = Math.floor((secondsRemaining % 3600) / 60);
-    
+
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
@@ -453,10 +453,10 @@ export function SocialRecoveryManagement({ walletAddress, isOpen, onClose, onUpd
             ) : pendingRecoveries && pendingRecoveries.length > 0 ? (
               <div className="space-y-3">
                 {pendingRecoveries.map((recovery) => {
-                  const now = BigInt(Math.floor(Date.now() / 1000));
-                  const canExecute = recovery.executionTime <= now && Number(recovery.approvalCount) >= Number(recoveryConfig.threshold);
-                  const requiredApprovals = Number(recoveryConfig.threshold);
-                  const currentApprovals = Number(recovery.approvalCount);
+                  const nowSeconds = Math.floor(Date.now() / 1000);
+                  const canExecute = recovery.executionTime <= nowSeconds && recovery.approvalCount >= recoveryConfig.threshold;
+                  const requiredApprovals = recoveryConfig.threshold;
+                  const currentApprovals = recovery.approvalCount;
                   const hasApproved = approvalStatuses?.get(recovery.recoveryHash) === true;
                   
                   return (

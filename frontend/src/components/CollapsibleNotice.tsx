@@ -11,22 +11,22 @@ interface CollapsibleNoticeProps {
 
 const variantStyles: Record<NoticeVariant, { container: string; icon: string; title: string; content: string }> = {
   info: {
-    container: 'bg-gradient-to-r from-blue-900/90 via-blue-800/90 to-blue-900/90 border-l-4 border-blue-600',
-    icon: 'text-blue-400',
-    title: 'text-blue-200',
-    content: 'text-blue-200/90',
+    container: 'bg-blue-50 dark:bg-gradient-to-r dark:from-blue-900/90 dark:via-blue-800/90 dark:to-blue-900/90 border-l-4 border-blue-500 dark:border-blue-600',
+    icon: 'text-blue-600 dark:text-blue-400',
+    title: 'text-blue-800 dark:text-blue-200',
+    content: 'text-blue-700 dark:text-blue-200/90',
   },
   success: {
-    container: 'bg-gradient-to-r from-green-900/90 via-green-800/90 to-green-900/90 border-l-4 border-green-600',
-    icon: 'text-green-400',
-    title: 'text-green-200',
-    content: 'text-green-200/90',
+    container: 'bg-green-50 dark:bg-gradient-to-r dark:from-green-900/90 dark:via-green-800/90 dark:to-green-900/90 border-l-4 border-green-500 dark:border-green-600',
+    icon: 'text-green-600 dark:text-green-400',
+    title: 'text-green-800 dark:text-green-200',
+    content: 'text-green-700 dark:text-green-200/90',
   },
   warning: {
-    container: 'bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600',
-    icon: 'text-yellow-400',
-    title: 'text-yellow-200',
-    content: 'text-yellow-200/90',
+    container: 'bg-yellow-50 dark:bg-gradient-to-r dark:from-yellow-900/90 dark:via-yellow-800/90 dark:to-yellow-900/90 border-l-4 border-yellow-500 dark:border-yellow-600',
+    icon: 'text-yellow-600 dark:text-yellow-400',
+    title: 'text-yellow-800 dark:text-yellow-200',
+    content: 'text-yellow-700 dark:text-yellow-200/90',
   },
 };
 

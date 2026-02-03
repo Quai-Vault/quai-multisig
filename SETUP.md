@@ -283,13 +283,12 @@ quai-multisig/
 - [Quai Network Documentation](https://docs.qu.ai)
 - [Quais.js SDK Docs](https://docs.qu.ai/develop/apis/quaisjs)
 - [Hardhat Example Repository](https://github.com/dominant-strategies/hardhat-example)
-- [Project Specification](./quai-multisig.md)
 
 ## Support
 
 For issues or questions:
-- Check [PROGRESS.md](./PROGRESS.md) for current status
-- Review [quai-multisig.md](./quai-multisig.md) for architecture details
+- Review [ARCHITECTURE.md](./ARCHITECTURE.md) for architecture details
+- Check [SECURITY_ANALYSIS.md](./SECURITY_ANALYSIS.md) for security information
 - Consult Quai Network Discord/Telegram communities
 
 ## License

@@ -1,9 +1,8 @@
-import { lazy, Suspense, Component, type ReactNode } from 'react';
+import { Component, type ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
-import { About } from './pages/About';
 import { WalletDetail } from './pages/WalletDetail';
 import { CreateWallet } from './pages/CreateWallet';
 import { NewTransaction } from './pages/NewTransaction';
@@ -75,26 +74,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 }
 
-// Lazy-loaded documentation pages (reduces initial bundle by ~10-15%)
-const DocsIndex = lazy(() => import('./pages/docs/DocsIndex').then(m => ({ default: m.DocsIndex })));
-const GettingStarted = lazy(() => import('./pages/docs/GettingStarted').then(m => ({ default: m.GettingStarted })));
-const MultisigWallets = lazy(() => import('./pages/docs/MultisigWallets').then(m => ({ default: m.MultisigWallets })));
-const Modules = lazy(() => import('./pages/docs/Modules').then(m => ({ default: m.Modules })));
-const SocialRecovery = lazy(() => import('./pages/docs/SocialRecovery').then(m => ({ default: m.SocialRecovery })));
-const FrontendGuide = lazy(() => import('./pages/docs/FrontendGuide').then(m => ({ default: m.FrontendGuide })));
-const DeveloperGuide = lazy(() => import('./pages/docs/DeveloperGuide').then(m => ({ default: m.DeveloperGuide })));
-const Security = lazy(() => import('./pages/docs/Security').then(m => ({ default: m.Security })));
-const FAQ = lazy(() => import('./pages/docs/FAQ').then(m => ({ default: m.FAQ })));
-
-// Simple loading fallback for lazy-loaded pages
-function PageLoader() {
-  return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500" />
-    </div>
-  );
-}
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -112,27 +91,15 @@ function App() {
       <Router>
         <ErrorBoundary>
           <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/about" element={<About />} />
-                <Route path="/docs" element={<DocsIndex />} />
-                <Route path="/docs/getting-started" element={<GettingStarted />} />
-                <Route path="/docs/multisig-wallets" element={<MultisigWallets />} />
-                <Route path="/docs/modules" element={<Modules />} />
-                <Route path="/docs/modules/social-recovery" element={<SocialRecovery />} />
-                <Route path="/docs/frontend-guide" element={<FrontendGuide />} />
-                <Route path="/docs/developer-guide" element={<DeveloperGuide />} />
-                <Route path="/docs/security" element={<Security />} />
-                <Route path="/docs/faq" element={<FAQ />} />
-                <Route path="/create" element={<CreateWallet />} />
-                <Route path="/wallet/:address" element={<WalletDetail />} />
-                <Route path="/wallet/:address/transaction/new" element={<NewTransaction />} />
-                <Route path="/wallet/:address/history" element={<TransactionHistory />} />
-                <Route path="/wallet/:address/lookup" element={<LookupTransaction />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/create" element={<CreateWallet />} />
+              <Route path="/wallet/:address" element={<WalletDetail />} />
+              <Route path="/wallet/:address/transaction/new" element={<NewTransaction />} />
+              <Route path="/wallet/:address/history" element={<TransactionHistory />} />
+              <Route path="/wallet/:address/lookup" element={<LookupTransaction />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Layout>
         </ErrorBoundary>
       </Router>

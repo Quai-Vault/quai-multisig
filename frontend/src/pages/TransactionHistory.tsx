@@ -3,6 +3,7 @@ import { useMultisig } from '../hooks/useMultisig';
 import { useIndexerConnection } from '../hooks/useIndexerConnection';
 import { decodeTransaction } from '../utils/transactionDecoder';
 import { getBlockRangeTimePeriod } from '../utils/blockTime';
+import { formatAddress, formatTimestamp } from '../utils/formatting';
 import { CopyButton } from '../components/CopyButton';
 import { ExplorerLink } from '../components/ExplorerLink';
 import { EmptyState } from '../components/EmptyState';
@@ -12,10 +13,6 @@ export function TransactionHistory() {
   const { address: walletAddress } = useParams<{ address: string }>();
   const { isConnected: isIndexerConnected } = useIndexerConnection();
   const { executedTransactions, cancelledTransactions, isLoadingHistory, isLoadingCancelled, refreshHistory, refreshCancelled } = useMultisig(walletAddress);
-
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
 
   if (!walletAddress) {
     return (
@@ -137,11 +134,6 @@ export function TransactionHistory() {
         ) : (
           <div className="space-y-4">
             {executedTransactions.map((tx) => {
-              const formatTimestamp = (timestamp: number) => {
-                const date = new Date(timestamp * 1000);
-                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-              };
-
               const decoded = decodeTransaction(tx, walletAddress);
 
               return (
@@ -280,11 +272,6 @@ export function TransactionHistory() {
         ) : (
           <div className="space-y-4">
             {cancelledTransactions.map((tx) => {
-              const formatTimestamp = (timestamp: number) => {
-                const date = new Date(timestamp * 1000);
-                return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-              };
-
               const decoded = decodeTransaction(tx, walletAddress);
 
               return (

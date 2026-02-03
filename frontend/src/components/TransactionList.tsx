@@ -1,4 +1,5 @@
-import { useState, memo, useCallback, useMemo } from 'react';
+import { useState, memo, useCallback, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
 import type { PendingTransaction } from '../types';
@@ -13,6 +14,12 @@ import { decodeTransaction, type DecodedTransaction } from '../utils/transaction
 import { CopyButton } from './CopyButton';
 import { ExplorerLink } from './ExplorerLink';
 import { EmptyState } from './EmptyState';
+import { formatAddress, formatTimestamp } from '../utils/formatting';
+
+// Virtualization constants
+const ESTIMATED_ITEM_HEIGHT = 320; // Approximate height of a transaction item
+const OVERSCAN = 3; // Number of items to render outside visible area
+const VIRTUALIZATION_THRESHOLD = 10; // Only virtualize when more than this many items
 
 interface TransactionListProps {
   transactions: PendingTransaction[];
@@ -32,15 +39,6 @@ interface TransactionItemProps {
   onCancel: (tx: PendingTransaction) => void;
 }
 
-function formatAddress(addr: string): string {
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-function formatTimestamp(timestamp: number | bigint) {
-  const date = new Date(Number(timestamp) * 1000);
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-}
-
 /**
  * Memoized transaction item component to prevent unnecessary re-renders
  * when other transactions in the list change
@@ -56,25 +54,40 @@ const TransactionItem = memo(function TransactionItem({
   onExecute,
   onCancel,
 }: TransactionItemProps) {
-  // Check if current user has approved - handle case-insensitive matching
-  const hasApproved = connectedAddress
-    ? Object.entries(tx.approvals).some(
-        ([owner, approved]) =>
-          approved && owner.toLowerCase() === connectedAddress.toLowerCase()
-      )
-    : false;
-  const canExecute = tx.numApprovals >= tx.threshold;
-  // Prevent division by zero - default to 100% if threshold is 0 (shouldn't happen but defensive)
-  const thresholdNum = Number(tx.threshold);
-  const approvalPercentage = thresholdNum > 0 ? (Number(tx.numApprovals) / thresholdNum) * 100 : 100;
+  // Memoize approval-related computed values to avoid Object.entries iteration on every render
+  const { hasApproved, canExecute, approvalPercentage, canCancel } = useMemo(() => {
+    // Check if current user has approved - handle case-insensitive matching
+    const userHasApproved = connectedAddress
+      ? Object.entries(tx.approvals).some(
+          ([owner, approved]) =>
+            approved && owner.toLowerCase() === connectedAddress.toLowerCase()
+        )
+      : false;
 
-  // Check if user can cancel: proposer can always cancel, others need threshold approvals
-  const isProposer = connectedAddress && tx.proposer &&
-    tx.proposer.toLowerCase() === connectedAddress.toLowerCase();
-  const canCancel = isProposer || (tx.numApprovals >= tx.threshold);
+    const meetsThreshold = tx.numApprovals >= tx.threshold;
+
+    // Prevent division by zero - default to 100% if threshold is 0 (shouldn't happen but defensive)
+    const thresholdNum = Number(tx.threshold);
+    const percentage = thresholdNum > 0 ? (Number(tx.numApprovals) / thresholdNum) * 100 : 100;
+
+    // Check if user can cancel: proposer can always cancel, others need threshold approvals
+    const isProposer = connectedAddress && tx.proposer &&
+      tx.proposer.toLowerCase() === connectedAddress.toLowerCase();
+    const userCanCancel = isProposer || meetsThreshold;
+
+    return {
+      hasApproved: userHasApproved,
+      canExecute: meetsThreshold,
+      approvalPercentage: percentage,
+      canCancel: userCanCancel,
+    };
+  }, [tx.approvals, tx.numApprovals, tx.threshold, tx.proposer, connectedAddress]);
+
+  // Check if this is an optimistic (unconfirmed) transaction
+  const isOptimistic = (tx as PendingTransaction & { _optimistic?: boolean })._optimistic;
 
   return (
-    <div className="vault-panel p-5 hover:border-primary-600/50 transition-all duration-300">
+    <div className={`vault-panel p-5 hover:border-primary-600/50 transition-all duration-300 ${isOptimistic ? 'opacity-80 border-dashed' : ''}`}>
       {/* Transaction Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-start gap-4 mb-3">
         <div className="flex-1 min-w-0">
@@ -83,6 +96,15 @@ const TransactionItem = memo(function TransactionItem({
               <span className="mr-2">{decoded.icon}</span>
               {decoded.description}
             </span>
+            {isOptimistic && (
+              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border border-yellow-300 dark:border-yellow-700/50">
+                <svg className="w-3 h-3 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Syncing
+              </span>
+            )}
             {canExecute && (
               <span className="inline-flex items-center px-3 py-1.5 rounded text-base font-semibold bg-gradient-to-r from-primary-700 to-primary-800 text-primary-200 border border-primary-600 shadow-red-glow animate-pulse-slow">
                 <svg className="w-3 h-3 mr-1.5" fill="currentColor" viewBox="0 0 20 20">
@@ -240,6 +262,9 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
   const [cancelModalTx, setCancelModalTx] = useState<PendingTransaction | null>(null);
   const [revokeModalTx, setRevokeModalTx] = useState<PendingTransaction | null>(null);
 
+  // Ref for virtualizer scrolling container
+  const parentRef = useRef<HTMLDivElement>(null);
+
   // Memoize handlers to prevent TransactionItem re-renders
   const handleApprove = useCallback((tx: PendingTransaction) => {
     setApproveModalTx(tx);
@@ -266,9 +291,40 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
     return decoded;
   }, [transactions, walletAddress]);
 
-  return (
-    <div className="space-y-3">
-      {transactions.length === 0 ? (
+  // Determine if we should use virtualization
+  const shouldVirtualize = transactions.length > VIRTUALIZATION_THRESHOLD;
+
+  // Virtual list setup - only created when needed
+  const rowVirtualizer = useVirtualizer({
+    count: transactions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ESTIMATED_ITEM_HEIGHT,
+    overscan: OVERSCAN,
+    // Enable dynamic measurement for variable height items
+    measureElement: (element) => element.getBoundingClientRect().height + 12, // +12 for gap
+  });
+
+  // Render a single transaction item (used by both virtualized and non-virtualized modes)
+  const renderTransactionItem = useCallback((tx: PendingTransaction) => (
+    <TransactionItem
+      key={tx.hash}
+      tx={tx}
+      walletAddress={walletAddress}
+      connectedAddress={connectedAddress}
+      isOwner={isOwner}
+      decoded={decodedTransactions.get(tx.hash)!}
+      onApprove={handleApprove}
+      onRevoke={handleRevoke}
+      onExecute={handleExecute}
+      onCancel={handleCancel}
+    />
+  ), [walletAddress, connectedAddress, isOwner, decodedTransactions, handleApprove, handleRevoke, handleExecute, handleCancel]);
+
+  // Render transaction list content based on mode
+  const renderContent = () => {
+    // Empty state
+    if (transactions.length === 0) {
+      return (
         <EmptyState
           icon={
             <svg
@@ -289,22 +345,55 @@ export function TransactionList({ transactions, walletAddress, isOwner }: Transa
           description="All transactions have been processed. New transactions will appear here once proposed."
           className="py-8"
         />
-      ) : (
-        transactions.map((tx) => (
-          <TransactionItem
-            key={tx.hash}
-            tx={tx}
-            walletAddress={walletAddress}
-            connectedAddress={connectedAddress}
-            isOwner={isOwner}
-            decoded={decodedTransactions.get(tx.hash)!}
-            onApprove={handleApprove}
-            onRevoke={handleRevoke}
-            onExecute={handleExecute}
-            onCancel={handleCancel}
-          />
-        ))
-      )}
+      );
+    }
+
+    // Non-virtualized mode for small lists (better for SEO and simpler DOM)
+    if (!shouldVirtualize) {
+      return transactions.map((tx) => renderTransactionItem(tx));
+    }
+
+    // Virtualized mode for large lists
+    return (
+      <div
+        ref={parentRef}
+        className="max-h-[calc(100vh-300px)] overflow-auto scrollbar-thin"
+        style={{ contain: 'strict' }}
+      >
+        <div
+          style={{
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            width: '100%',
+            position: 'relative',
+          }}
+        >
+          {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+            const tx = transactions[virtualRow.index];
+            return (
+              <div
+                key={tx.hash}
+                data-index={virtualRow.index}
+                ref={rowVirtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualRow.start}px)`,
+                }}
+              >
+                {renderTransactionItem(tx)}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {renderContent()}
 
       {/* Modals */}
       {approveModalTx && (

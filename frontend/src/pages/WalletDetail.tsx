@@ -364,6 +364,7 @@ export function WalletDetail() {
           <div>
             <div className="flex items-center gap-4.5">
               <h2 className="text-lg font-display font-bold text-dark-700 dark:text-dark-200">Pending Transactions</h2>
+              {/* Only show refresh indicator when manually refreshing or polling (not during subscription updates) */}
               {isRefetchingPending && (
                 <div className="w-2.5 h-2.5 border border-primary-600 border-t-transparent rounded-full animate-spin"></div>
               )}

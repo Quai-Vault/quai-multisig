@@ -4,9 +4,21 @@ import {
   TransactionSchema,
   ConfirmationSchema,
   DepositSchema,
+  DailyLimitStateSchema,
+  WhitelistEntrySchema,
+  WalletModuleSchema,
+  WalletOwnerSchema,
+  SocialRecoverySchema,
+  RecoveryApprovalSchema,
   type IndexerTransaction,
   type Deposit,
   type Confirmation,
+  type DailyLimitState,
+  type WhitelistEntry,
+  type WalletModule,
+  type WalletOwner,
+  type SocialRecovery,
+  type RecoveryApproval,
 } from '../../types/database';
 
 export interface SubscriptionCallbacks<T> {
@@ -241,6 +253,491 @@ export class IndexerSubscriptionService {
 
     return () => {
       // Cancel any pending reconnect timeout
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToDailyLimitState(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<DailyLimitState>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `daily_limit_state:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'daily_limit_state',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = DailyLimitStateSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid daily limit state payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'daily_limit_state',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = DailyLimitStateSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid daily limit state payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToWhitelistEntries(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<WhitelistEntry>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `whitelist_entries:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'whitelist_entries',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WhitelistEntrySchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid whitelist entry payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'whitelist_entries',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WhitelistEntrySchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid whitelist entry payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'whitelist_entries',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WhitelistEntrySchema.safeParse(payload.old);
+            if (parsed.success) {
+              callbacks.onDelete?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid whitelist entry payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToWalletModules(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<WalletModule>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `wallet_modules:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'wallet_modules',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WalletModuleSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid wallet module payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'wallet_modules',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WalletModuleSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid wallet module payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToWalletOwners(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<WalletOwner>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `wallet_owners:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'wallet_owners',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WalletOwnerSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid wallet owner payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'wallet_owners',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = WalletOwnerSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid wallet owner payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToSocialRecoveries(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<SocialRecovery>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `social_recoveries:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'social_recoveries',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = SocialRecoverySchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid social recovery payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'social_recoveries',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = SocialRecoverySchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid social recovery payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
+      const timeout = this.reconnectTimeouts.get(channelName);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.reconnectTimeouts.delete(channelName);
+      }
+
+      const channel = this.channels.get(channelName);
+      if (channel) {
+        this.ensureClient().removeChannel(channel);
+        this.channels.delete(channelName);
+        this.reconnectAttempts.delete(channelName);
+        this.isReconnecting.delete(channelName);
+      }
+    };
+  }
+
+  subscribeToRecoveryApprovals(
+    walletAddress: string,
+    callbacks: SubscriptionCallbacks<RecoveryApproval>
+  ): () => void {
+    const client = this.ensureClient();
+    const channelName = `recovery_approvals:${walletAddress.toLowerCase()}`;
+
+    const subscribe = () => {
+      const channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'social_recovery_approvals',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = RecoveryApprovalSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onInsert?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid recovery approval payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: INDEXER_CONFIG.SCHEMA,
+            table: 'social_recovery_approvals',
+            filter: `wallet_address=eq.${walletAddress.toLowerCase()}`,
+          },
+          (payload) => {
+            const parsed = RecoveryApprovalSchema.safeParse(payload.new);
+            if (parsed.success) {
+              callbacks.onUpdate?.(parsed.data);
+            } else {
+              callbacks.onError?.(new Error(`Invalid recovery approval payload: ${parsed.error.message}`));
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            if (this.isReconnecting.get(channelName)) {
+              this.isReconnecting.set(channelName, false);
+              callbacks.onReconnect?.();
+            }
+            this.reconnectAttempts.set(channelName, 0);
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            this.handleReconnect(channelName, subscribe, callbacks.onError);
+          }
+        });
+
+      this.channels.set(channelName, channel);
+    };
+
+    subscribe();
+
+    return () => {
       const timeout = this.reconnectTimeouts.get(channelName);
       if (timeout) {
         clearTimeout(timeout);

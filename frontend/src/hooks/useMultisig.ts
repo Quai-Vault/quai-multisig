@@ -8,15 +8,19 @@ import { INDEXER_CONFIG } from '../config/supabase';
 import { indexerService } from '../services/indexer';
 import { convertIndexerTransaction } from '../services/utils/TransactionConverter';
 import { useIndexerConnection } from './useIndexerConnection';
+import { useOptimisticUpdates } from './useOptimisticUpdates';
 import type { DeploymentConfig, TransactionData, PendingTransaction } from '../types';
 import { formatQuai } from 'quais';
+import { canShowBrowserNotifications } from '../utils/notifications';
 
 // Polling intervals (in milliseconds)
+// Subscriptions provide real-time updates, but polling acts as a safety net
 const POLLING_INTERVALS = {
   WALLET_INFO: 15000,        // 15 seconds - balance and owner info
-  PENDING_TXS: 10000,        // 10 seconds - pending transactions (most critical)
+  PENDING_TXS: 10000,        // 10 seconds - pending transactions (critical for UX)
+  PENDING_TXS_FALLBACK: 30000, // 30 seconds - when subscriptions are active as backup
   TRANSACTION_HISTORY: 30000, // 30 seconds - executed/cancelled transactions
-  USER_WALLETS: 20000,       // 20 seconds - wallet list
+  USER_WALLETS: 30000,       // 30 seconds - wallet list
 } as const;
 
 // Maximum number of wallets to track in memory (LRU eviction after this limit)
@@ -28,8 +32,11 @@ const MAX_TRACKED_WALLETS = 50;
  * Uses Map's insertion order for LRU behavior (oldest entries are first)
  */
 class LRUMap<K, V> extends Map<K, V> {
-  constructor(private maxSize: number) {
+  private maxSize: number;
+  
+  constructor(maxSize: number) {
     super();
+    this.maxSize = maxSize;
   }
 
   set(key: K, value: V): this {
@@ -153,6 +160,10 @@ export function useMultisig(walletAddress?: string) {
     setPendingTransactions,
   } = useWalletStore();
 
+  // Optimistic updates hook for instant UI feedback
+  // Note: Hook must be called unconditionally, so we pass empty string if no wallet
+  const optimisticUpdates = useOptimisticUpdates(walletAddress || '');
+
   // Track previous balances for each wallet (using ref to persist across renders)
   const prevBalancesRef = useRef<Map<string, string>>(new Map());
 
@@ -162,12 +173,19 @@ export function useMultisig(walletAddress?: string) {
   // Track previous wallet info (for owner/threshold changes)
   const prevWalletInfoRef = useRef<Map<string, { owners: string[]; threshold: number }>>(new Map());
 
+  // Cache wallet threshold to avoid repeated fetches in subscription updates
+  const walletThresholdCacheRef = useRef<Map<string, number>>(new Map());
+
   // Global processing queue for ALL subscription cache updates (prevents race conditions)
   // Using a single queue ensures setQueryData calls don't interleave across different transactions
   const cacheUpdateQueueRef = useRef<Promise<void>>(Promise.resolve());
-  // Track queue size to prevent unbounded growth during high-frequency updates
+  // Track queue size with hard limit to prevent memory issues
   const cacheUpdateQueueSizeRef = useRef<number>(0);
-  const MAX_QUEUE_SIZE = 50;
+  const QUEUE_WARNING_THRESHOLD = 20; // Log warning when queue backs up
+  const MAX_QUEUE_SIZE = 100; // Hard limit - drop updates if exceeded
+
+  // Track mutation timeouts for cleanup on unmount
+  const mutationTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
   // Track active subscription count for cleanup
   useEffect(() => {
@@ -205,9 +223,14 @@ export function useMultisig(walletAddress?: string) {
       if (!walletAddress) return null;
       const info = await multisigService.getWalletInfo(walletAddress);
       setWalletInfo(walletAddress, info);
+      // Cache threshold for subscription updates
+      if (info) {
+        walletThresholdCacheRef.current.set(walletAddress.toLowerCase(), info.threshold);
+      }
       return info;
     },
     enabled: !!walletAddress && isPageVisible,
+    // Reduce polling frequency - subscriptions handle most updates
     refetchInterval: isPageVisible ? POLLING_INTERVALS.WALLET_INFO : false,
   });
 
@@ -241,7 +264,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'success',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('Vault Received Funds', {
               body: `Received ${increaseFormatted} QUAI. New balance: ${totalFormatted} QUAI`,
               icon: '/vite.svg',
@@ -306,7 +329,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'info',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('Threshold Changed', {
               body: `Approval threshold changed from ${prevThreshold} to ${currentThreshold}`,
               icon: '/vite.svg',
@@ -360,6 +383,7 @@ export function useMultisig(walletAddress?: string) {
       return statuses;
     },
     enabled: !!walletAddress && isPageVisible,
+    // Less frequent polling - module status doesn't change often
     refetchInterval: isPageVisible ? POLLING_INTERVALS.WALLET_INFO : false,
   });
 
@@ -383,7 +407,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'success',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification(`${moduleName} Module Enabled`, {
               body: `The ${moduleName} module has been enabled for this vault`,
               icon: '/vite.svg',
@@ -395,7 +419,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'success',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification(`${moduleName} Module Disabled`, {
               body: `The ${moduleName} module has been disabled for this vault`,
               icon: '/vite.svg',
@@ -424,8 +448,13 @@ export function useMultisig(walletAddress?: string) {
       return txs;
     },
     enabled: !!walletAddress && isPageVisible,
-    // Only poll if indexer not connected (subscriptions handle updates when connected)
-    refetchInterval: isPageVisible && !isIndexerConnected ? POLLING_INTERVALS.PENDING_TXS : false,
+    // Poll as primary update mechanism when indexer unavailable,
+    // or as fallback safety net when subscriptions are active
+    refetchInterval: isPageVisible
+      ? (isIndexerConnected
+          ? POLLING_INTERVALS.PENDING_TXS_FALLBACK  // Backup when subscriptions active
+          : POLLING_INTERVALS.PENDING_TXS)          // Primary when no subscriptions
+      : false,
   });
 
   // Real-time subscriptions when indexer is connected
@@ -439,15 +468,24 @@ export function useMultisig(walletAddress?: string) {
     // Using a single global queue ensures setQueryData calls don't interleave
     // across different transactions affecting the same query cache
     const queueCacheUpdate = (processor: () => Promise<void>): void => {
-      // Prevent unbounded queue growth during high-frequency updates
+      // Enforce hard limit to prevent memory issues
       if (cacheUpdateQueueSizeRef.current >= MAX_QUEUE_SIZE) {
-        console.warn('Cache update queue full, dropping update');
+        console.warn(`Cache update queue at max capacity (${MAX_QUEUE_SIZE}), dropping update`);
         return;
       }
 
       cacheUpdateQueueSizeRef.current++;
+
+      // Log warning if queue is backing up (but still process)
+      if (cacheUpdateQueueSizeRef.current > QUEUE_WARNING_THRESHOLD) {
+        console.debug(`Cache update queue size: ${cacheUpdateQueueSizeRef.current}`);
+      }
+
       cacheUpdateQueueRef.current = cacheUpdateQueueRef.current
-        .catch(() => {}) // Ignore errors from previous processing
+        .catch((prevError) => {
+          // Log errors from previous processing for debugging
+          console.debug('Previous cache update error:', prevError instanceof Error ? prevError.message : 'Unknown');
+        })
         .then(async () => {
           // Check if effect is still active before processing
           if (!isActive) return;
@@ -461,21 +499,38 @@ export function useMultisig(walletAddress?: string) {
         });
     };
 
+    // Helper to get threshold (cached or fetch)
+    const getThreshold = async (): Promise<number> => {
+      const cached = walletThresholdCacheRef.current.get(walletAddress.toLowerCase());
+      if (cached !== undefined) return cached;
+      
+      // Fetch and cache
+      const wallet = await indexerService.wallet.getWalletDetails(walletAddress);
+      if (wallet) {
+        walletThresholdCacheRef.current.set(walletAddress.toLowerCase(), wallet.threshold);
+        return wallet.threshold;
+      }
+      return 1; // Fallback
+    };
+
     // Subscribe to transaction updates
     const unsubscribeTx = indexerService.subscription.subscribeToTransactions(walletAddress, {
       onInsert: (tx) => {
         queueCacheUpdate(async () => {
-          // Get wallet threshold for conversion
-          const wallet = await indexerService.wallet.getWalletDetails(walletAddress);
-          if (!wallet || !isActive) return;
-
-          const confirmations = await indexerService.transaction.getActiveConfirmations(
-            walletAddress,
-            tx.tx_hash
-          );
+          if (!isActive) return;
+          
+          // Parallelize: fetch threshold and confirmations simultaneously
+          const [threshold, confirmations] = await Promise.all([
+            getThreshold(),
+            indexerService.transaction.getActiveConfirmations(walletAddress, tx.tx_hash)
+          ]);
+          
           if (!isActive) return;
 
-          const converted = convertIndexerTransaction(tx, wallet.threshold, confirmations);
+          const converted = convertIndexerTransaction(tx, threshold, confirmations);
+          
+          // Cancel optimistic cleanup since real data arrived
+          optimisticUpdates?.cancelOptimisticCleanup(tx.tx_hash);
 
           queryClient.setQueryData<PendingTransaction[]>(
             ['pendingTransactions', walletAddress],
@@ -492,16 +547,20 @@ export function useMultisig(walletAddress?: string) {
       },
       onUpdate: (tx) => {
         queueCacheUpdate(async () => {
-          const wallet = await indexerService.wallet.getWalletDetails(walletAddress);
-          if (!wallet || !isActive) return;
-
-          const confirmations = await indexerService.transaction.getActiveConfirmations(
-            walletAddress,
-            tx.tx_hash
-          );
+          if (!isActive) return;
+          
+          // Parallelize: fetch threshold and confirmations simultaneously
+          const [threshold, confirmations] = await Promise.all([
+            getThreshold(),
+            indexerService.transaction.getActiveConfirmations(walletAddress, tx.tx_hash)
+          ]);
+          
           if (!isActive) return;
 
-          const converted = convertIndexerTransaction(tx, wallet.threshold, confirmations);
+          const converted = convertIndexerTransaction(tx, threshold, confirmations);
+          
+          // Cancel optimistic cleanup since real data arrived
+          optimisticUpdates?.cancelOptimisticCleanup(tx.tx_hash);
 
           if (tx.status === 'executed' || tx.status === 'cancelled') {
             // Remove from pending
@@ -543,6 +602,65 @@ export function useMultisig(walletAddress?: string) {
       },
     });
 
+    // Subscribe to confirmations for instant approval updates
+    const unsubscribeConfirmations = indexerService.subscription.subscribeToConfirmations(walletAddress, {
+      onInsert: (confirmation) => {
+        queueCacheUpdate(async () => {
+          if (!isActive) return;
+          
+          // Get threshold (cached)
+          const threshold = await getThreshold();
+          
+          // Fetch transaction and all confirmations
+          const [tx, confirmations] = await Promise.all([
+            indexerService.transaction.getTransactionByHash(walletAddress, confirmation.tx_hash),
+            indexerService.transaction.getActiveConfirmations(walletAddress, confirmation.tx_hash)
+          ]);
+          
+          if (!tx || !isActive) return;
+          
+          const converted = convertIndexerTransaction(tx, threshold, confirmations);
+          
+          // Cancel optimistic cleanup since real data arrived
+          optimisticUpdates?.cancelOptimisticCleanup(confirmation.tx_hash);
+          
+          // Update transaction in cache
+          queryClient.setQueryData<PendingTransaction[]>(
+            ['pendingTransactions', walletAddress],
+            (old = []) => old.map((t) => (t.hash === confirmation.tx_hash ? converted : t))
+          );
+        });
+      },
+      onDelete: (confirmation) => {
+        queueCacheUpdate(async () => {
+          if (!isActive) return;
+          
+          // Get threshold (cached)
+          const threshold = await getThreshold();
+          
+          // Fetch transaction and remaining confirmations
+          const [tx, confirmations] = await Promise.all([
+            indexerService.transaction.getTransactionByHash(walletAddress, confirmation.tx_hash),
+            indexerService.transaction.getActiveConfirmations(walletAddress, confirmation.tx_hash)
+          ]);
+          
+          if (!tx || !isActive) return;
+          
+          const converted = convertIndexerTransaction(tx, threshold, confirmations);
+          
+          // Update transaction in cache
+          queryClient.setQueryData<PendingTransaction[]>(
+            ['pendingTransactions', walletAddress],
+            (old = []) => old.map((t) => (t.hash === confirmation.tx_hash ? converted : t))
+          );
+        });
+      },
+      onError: (error) => {
+        if (!isActive) return;
+        console.warn('Confirmation subscription error:', error instanceof Error ? error.message : 'Unknown error');
+      },
+    });
+
     // Subscribe to deposit updates (for balance notifications)
     const unsubscribeDeposit = indexerService.subscription.subscribeToDeposits(walletAddress, {
       onInsert: (deposit) => {
@@ -565,39 +683,162 @@ export function useMultisig(walletAddress?: string) {
       },
     });
 
+    // Subscribe to daily limit state updates
+    const unsubscribeDailyLimit = indexerService.subscription.subscribeToDailyLimitState(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['dailyLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['remainingLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['timeUntilReset', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['dailyLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['remainingLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['timeUntilReset', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['dailyLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['remainingLimit', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['timeUntilReset', walletAddress] });
+      },
+    });
+
+    // Subscribe to whitelist entry updates
+    const unsubscribeWhitelist = indexerService.subscription.subscribeToWhitelistEntries(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['whitelistedAddresses', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['whitelistedAddresses', walletAddress] });
+      },
+      onDelete: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['whitelistedAddresses', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['whitelistedAddresses', walletAddress] });
+      },
+    });
+
+    // Subscribe to wallet module updates
+    const unsubscribeModules = indexerService.subscription.subscribeToWalletModules(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['moduleStatus', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['moduleStatus', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['moduleStatus', walletAddress] });
+      },
+    });
+
+    // Subscribe to wallet owner updates
+    const unsubscribeOwners = indexerService.subscription.subscribeToWalletOwners(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['walletInfo', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['owners', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['walletInfo', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['owners', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['walletInfo', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['owners', walletAddress] });
+      },
+    });
+
+    // Subscribe to social recovery updates
+    const unsubscribeSocialRecoveries = indexerService.subscription.subscribeToSocialRecoveries(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['recoveryConfig', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['recoveryConfig', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['recoveryConfig', walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+    });
+
+    // Subscribe to recovery approval updates
+    const unsubscribeRecoveryApprovals = indexerService.subscription.subscribeToRecoveryApprovals(walletAddress, {
+      onInsert: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+      onUpdate: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+      onReconnect: () => {
+        if (!isActive) return;
+        queryClient.invalidateQueries({ queryKey: ['pendingRecoveries', walletAddress] });
+      },
+    });
+
     return () => {
       // Mark effect as inactive to prevent in-flight operations from updating state
       isActive = false;
       unsubscribeTx();
+      unsubscribeConfirmations();
       unsubscribeDeposit();
+      unsubscribeDailyLimit();
+      unsubscribeWhitelist();
+      unsubscribeModules();
+      unsubscribeOwners();
+      unsubscribeSocialRecoveries();
+      unsubscribeRecoveryApprovals();
     };
-  }, [walletAddress, isIndexerConnected, queryClient]);
+  }, [walletAddress, isIndexerConnected, queryClient, optimisticUpdates]);
 
   // Track pending transactions for notifications (new transactions, approvals, ready to execute)
   useEffect(() => {
     if (!pendingTransactions || !walletAddress) return;
-    
+
+    // Normalize addresses once at the start to avoid repeated toLowerCase() calls
+    const normalizedWallet = walletAddress.toLowerCase();
+    const normalizedConnected = connectedAddress?.toLowerCase();
+
     const prevTxsMap = prevPendingTxsRef.current.get(walletAddress) || new Map();
     const currentTxsMap = new Map<string, PendingTransaction>();
-    
+
     // Process current transactions
     pendingTransactions.forEach((tx) => {
       const txHashLower = tx.hash.toLowerCase();
       currentTxsMap.set(txHashLower, tx);
       const prevTx = prevTxsMap.get(txHashLower);
-      
+
       if (!prevTx) {
         // New transaction detected (only notify if we had previous transactions and haven't already notified)
-        const walletProposedSet = notifiedProposedTxs.get(walletAddress.toLowerCase()) ?? new Set();
+        const walletProposedSet = notifiedProposedTxs.get(normalizedWallet) ?? new Set();
         if (prevTxsMap.size > 0 && !walletProposedSet.has(txHashLower)) {
           walletProposedSet.add(txHashLower);
-          notifiedProposedTxs.set(walletAddress.toLowerCase(), walletProposedSet);
+          notifiedProposedTxs.set(normalizedWallet, walletProposedSet);
           notificationManager.add({
             message: `📝 New transaction proposed: ${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`,
             type: 'info',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('New Transaction Proposed', {
               body: `Transaction ${tx.hash.slice(0, 10)}... requires approval`,
               icon: '/vite.svg',
@@ -609,18 +850,20 @@ export function useMultisig(walletAddress?: string) {
         // Existing transaction - check for changes
         
         // Check if transaction is now ready to execute
+        // Skip notification for optimistic updates - wait for confirmed data
         const wasReady = prevTx.numApprovals >= prevTx.threshold;
         const isReady = tx.numApprovals >= tx.threshold;
-        const walletReadySet = notifiedReadyTxs.get(walletAddress.toLowerCase()) ?? new Set();
-        if (!wasReady && isReady && !walletReadySet.has(txHashLower)) {
+        const isOptimistic = (tx as PendingTransaction & { _optimistic?: boolean })._optimistic;
+        const walletReadySet = notifiedReadyTxs.get(normalizedWallet) ?? new Set();
+        if (!wasReady && isReady && !walletReadySet.has(txHashLower) && !isOptimistic) {
           walletReadySet.add(txHashLower);
-          notifiedReadyTxs.set(walletAddress.toLowerCase(), walletReadySet);
+          notifiedReadyTxs.set(normalizedWallet, walletReadySet);
           notificationManager.add({
             message: `✅ Transaction ready to execute! ${tx.hash.slice(0, 10)}...${tx.hash.slice(-6)}`,
             type: 'success',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('Transaction Ready to Execute', {
               body: `Transaction ${tx.hash.slice(0, 10)}... has reached the threshold`,
               icon: '/vite.svg',
@@ -630,18 +873,17 @@ export function useMultisig(walletAddress?: string) {
         }
         
         // Check for new approvals (someone else approved)
-        if (connectedAddress) {
+        if (normalizedConnected) {
           const prevApprovals = Object.keys(prevTx.approvals).filter(addr => prevTx.approvals[addr.toLowerCase()]);
           const currentApprovals = Object.keys(tx.approvals).filter(addr => tx.approvals[addr.toLowerCase()]);
-          
+
           // Find new approvers (not the connected user)
           const newApprovers = currentApprovals.filter(
-            addr => !prevApprovals.includes(addr) && addr.toLowerCase() !== connectedAddress.toLowerCase()
+            addr => !prevApprovals.includes(addr) && addr.toLowerCase() !== normalizedConnected
           );
           
           if (newApprovers.length > 0) {
             // Use 2-level structure: wallet -> txHash -> Set<approvers>
-            const normalizedWallet = walletAddress.toLowerCase();
             let walletApprovals = notifiedApprovals.get(normalizedWallet);
             if (!walletApprovals) {
               walletApprovals = new Map<string, Set<string>>();
@@ -658,7 +900,7 @@ export function useMultisig(walletAddress?: string) {
                   type: 'info',
                 });
 
-                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                if (canShowBrowserNotifications()) {
                   new Notification('Transaction Approved', {
                     body: `${approverShort} approved transaction ${tx.hash.slice(0, 10)}...`,
                     icon: '/vite.svg',
@@ -673,7 +915,7 @@ export function useMultisig(walletAddress?: string) {
           
           // Check for revoked approvals
           const revokedApprovers = prevApprovals.filter(
-            addr => !currentApprovals.includes(addr) && addr.toLowerCase() !== connectedAddress.toLowerCase()
+            addr => !currentApprovals.includes(addr) && addr.toLowerCase() !== normalizedConnected
           );
           
           if (revokedApprovers.length > 0) {
@@ -707,6 +949,7 @@ export function useMultisig(walletAddress?: string) {
       return txs;
     },
     enabled: !!walletAddress && isPageVisible,
+    // Less frequent polling for history (not time-sensitive)
     refetchInterval: isPageVisible ? POLLING_INTERVALS.TRANSACTION_HISTORY : false,
   });
 
@@ -730,7 +973,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'success',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('Transaction Executed', {
               body: `Transaction ${tx.hash.slice(0, 10)}... has been executed`,
               icon: '/vite.svg',
@@ -758,6 +1001,7 @@ export function useMultisig(walletAddress?: string) {
       return txs;
     },
     enabled: !!walletAddress && isPageVisible,
+    // Less frequent polling for history (not time-sensitive)
     refetchInterval: isPageVisible ? POLLING_INTERVALS.TRANSACTION_HISTORY : false,
   });
 
@@ -781,7 +1025,7 @@ export function useMultisig(walletAddress?: string) {
             type: 'warning',
           });
 
-          if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (canShowBrowserNotifications()) {
             new Notification('Transaction Cancelled', {
               body: `Transaction ${tx.hash.slice(0, 10)}... has been cancelled`,
               icon: '/vite.svg',
@@ -808,6 +1052,7 @@ export function useMultisig(walletAddress?: string) {
       return await multisigService.getWalletsForOwner(connectedAddress);
     },
     enabled: !!connectedAddress && isPageVisible,
+    // Less frequent polling - wallet list doesn't change often
     refetchInterval: isPageVisible ? POLLING_INTERVALS.USER_WALLETS : false,
   });
 
@@ -839,13 +1084,31 @@ export function useMultisig(walletAddress?: string) {
       );
     },
     onSuccess: (txHash, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
       // Mark this transaction as already notified to prevent duplicate notifications from polling
       if (txHash) {
         const normalizedWallet = variables.walletAddress.toLowerCase();
         const walletProposedSet = notifiedProposedTxs.get(normalizedWallet) ?? new Set();
         walletProposedSet.add(txHash.toLowerCase());
         notifiedProposedTxs.set(normalizedWallet, walletProposedSet);
+
+        // Add optimistic transaction immediately so UI updates fast
+        // Get fresh connected address from store
+        const currentConnectedAddress = useWalletStore.getState().address;
+        if (currentConnectedAddress) {
+          optimisticUpdates.addOptimisticTransaction({
+            hash: txHash,
+            to: variables.to,
+            value: variables.value,
+            data: variables.data || '0x',
+            numApprovals: 1, // Proposer approves automatically
+            threshold: walletInfo?.threshold || 1,
+            proposer: currentConnectedAddress,
+            approvals: { [currentConnectedAddress]: true },
+            timestamp: Date.now() / 1000,
+          });
+          // Schedule cleanup to replace with real data
+          optimisticUpdates.scheduleOptimisticCleanup(txHash);
+        }
       }
       // Show success notification when you propose a transaction
       notificationManager.add({
@@ -868,11 +1131,23 @@ export function useMultisig(walletAddress?: string) {
     mutationFn: async ({ walletAddress, txHash }: { walletAddress: string; txHash: string }) => {
       return await multisigService.approveTransaction(walletAddress, txHash);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
+    onMutate: async ({ walletAddress: mutationWallet, txHash }) => {
+      // Get fresh connected address from store to avoid stale closure
+      const currentConnectedAddress = useWalletStore.getState().address;
+      // Optimistically update UI immediately
+      if (mutationWallet && currentConnectedAddress) {
+        optimisticUpdates.updateOptimisticApproval(txHash, currentConnectedAddress);
+        optimisticUpdates.scheduleOptimisticCleanup(txHash);
+      }
     },
-    onError: (error) => {
+    onSuccess: () => {
+      // Don't invalidate - subscription will update, or cleanup timeout will handle it
+      // This prevents unnecessary refetch and keeps UI responsive
+    },
+    onError: (error, variables) => {
       setError(error instanceof Error ? error.message : 'Failed to approve transaction');
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
   });
 
@@ -881,11 +1156,22 @@ export function useMultisig(walletAddress?: string) {
     mutationFn: async ({ walletAddress, txHash }: { walletAddress: string; txHash: string }) => {
       return await multisigService.revokeApproval(walletAddress, txHash);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
+    onMutate: async ({ walletAddress: mutationWallet, txHash }) => {
+      // Get fresh connected address from store to avoid stale closure
+      const currentConnectedAddress = useWalletStore.getState().address;
+      // Optimistically update UI immediately
+      if (mutationWallet && currentConnectedAddress) {
+        optimisticUpdates.updateOptimisticRevocation(txHash, currentConnectedAddress);
+        optimisticUpdates.scheduleOptimisticCleanup(txHash);
+      }
     },
-    onError: (error) => {
+    onSuccess: () => {
+      // Don't invalidate - subscription will update, or cleanup timeout will handle it
+    },
+    onError: (error, variables) => {
       setError(error instanceof Error ? error.message : 'Failed to revoke approval');
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
     },
   });
 
@@ -895,9 +1181,17 @@ export function useMultisig(walletAddress?: string) {
       return await multisigService.executeTransaction(walletAddress, txHash);
     },
     onSuccess: (_, variables) => {
+      // Invalidate transaction queries
       queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['walletInfo', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['executedTransactions', variables.walletAddress] });
+      // Invalidate module queries - executed transaction may have changed module config
+      queryClient.invalidateQueries({ queryKey: ['dailyLimit', variables.walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['remainingLimit', variables.walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['timeUntilReset', variables.walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['whitelistedAddresses', variables.walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['moduleStatus', variables.walletAddress] });
+      queryClient.invalidateQueries({ queryKey: ['recoveryConfig', variables.walletAddress] });
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to execute transaction');
@@ -910,8 +1204,10 @@ export function useMultisig(walletAddress?: string) {
       return await multisigService.cancelTransaction(walletAddress, txHash);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
-      queryClient.invalidateQueries({ queryKey: ['cancelledTransactions', variables.walletAddress] });
+      if (variables.walletAddress) {
+        queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
+        queryClient.invalidateQueries({ queryKey: ['cancelledTransactions', variables.walletAddress] });
+      }
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to cancel transaction');
@@ -923,14 +1219,16 @@ export function useMultisig(walletAddress?: string) {
     mutationFn: async ({ walletAddress, newOwner }: { walletAddress: string; newOwner: string }) => {
       return await multisigService.owner.addOwner(walletAddress, newOwner);
     },
-    onSuccess: (txHash, variables) => {
+    onSuccess: (_txHash, variables) => {
       // Invalidate and refetch queries
       queryClient.invalidateQueries({ queryKey: ['walletInfo', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
       // Also manually refetch after a short delay to ensure the transaction appears
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        mutationTimeoutsRef.current.delete(timeoutId);
         queryClient.refetchQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
       }, 2000);
+      mutationTimeoutsRef.current.add(timeoutId);
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to add owner');
@@ -1006,10 +1304,12 @@ export function useMultisig(walletAddress?: string) {
     onSuccess: (txHash, variables) => {
       queryClient.invalidateQueries({ queryKey: ['pendingTransactions', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['walletInfo', variables.walletAddress] });
-      notificationManager.add({
-        message: `✅ Transaction executed via whitelist! Hash: ${txHash?.slice(0, 10)}...${txHash?.slice(-6)}`,
-        type: 'success',
-      });
+      if (txHash) {
+        notificationManager.add({
+          message: `✅ Transaction executed via whitelist! Hash: ${txHash.slice(0, 10)}...${txHash.slice(-6)}`,
+          type: 'success',
+        });
+      }
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to execute transaction via whitelist');
@@ -1035,10 +1335,12 @@ export function useMultisig(walletAddress?: string) {
       queryClient.invalidateQueries({ queryKey: ['walletInfo', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['dailyLimit', variables.walletAddress] });
       queryClient.invalidateQueries({ queryKey: ['remainingLimit', variables.walletAddress] });
-      notificationManager.add({
-        message: `✅ Transaction executed via daily limit! Hash: ${txHash?.slice(0, 10)}...${txHash?.slice(-6)}`,
-        type: 'success',
-      });
+      if (txHash) {
+        notificationManager.add({
+          message: `✅ Transaction executed via daily limit! Hash: ${txHash.slice(0, 10)}...${txHash.slice(-6)}`,
+          type: 'success',
+        });
+      }
     },
     onError: (error) => {
       setError(error instanceof Error ? error.message : 'Failed to execute transaction via daily limit');
@@ -1049,12 +1351,35 @@ export function useMultisig(walletAddress?: string) {
     },
   });
 
-  const refresh = useCallback(() => {
-    refetchWalletInfo();
-    refetchTransactions();
-    refetchUserWallets();
-    refetchCancelled();
+  // Track manual refresh state (separate from polling/subscription updates)
+  const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setIsManuallyRefreshing(true);
+    try {
+      await Promise.all([
+        refetchWalletInfo(),
+        refetchTransactions(),
+        refetchUserWallets(),
+        refetchCancelled(),
+      ]);
+    } finally {
+      // Reset after a short delay to show the refresh indicator
+      const timeoutId = setTimeout(() => {
+        mutationTimeoutsRef.current.delete(timeoutId);
+        setIsManuallyRefreshing(false);
+      }, 500);
+      mutationTimeoutsRef.current.add(timeoutId);
+    }
   }, [refetchWalletInfo, refetchTransactions, refetchUserWallets, refetchCancelled]);
+
+  // Cleanup mutation timeouts on unmount
+  useEffect(() => {
+    return () => {
+      mutationTimeoutsRef.current.forEach((timeoutId) => clearTimeout(timeoutId));
+      mutationTimeoutsRef.current.clear();
+    };
+  }, []);
 
   return {
     // Data
@@ -1073,11 +1398,12 @@ export function useMultisig(walletAddress?: string) {
     isLoadingWallets,
 
     // Refreshing states (for visual indicators)
-    isRefetchingWalletInfo,
-    isRefetchingPending,
-    isRefetchingHistory,
-    isRefetchingCancelled,
-    isRefetchingWallets,
+    // Only show refetching when manually refreshing or polling (not during subscription updates)
+    isRefetchingWalletInfo: isRefetchingWalletInfo && (isManuallyRefreshing || !isIndexerConnected),
+    isRefetchingPending: isRefetchingPending && (isManuallyRefreshing || (!isIndexerConnected && INDEXER_CONFIG.ENABLED)),
+    isRefetchingHistory: isRefetchingHistory && isManuallyRefreshing,
+    isRefetchingCancelled: isRefetchingCancelled && isManuallyRefreshing,
+    isRefetchingWallets: isRefetchingWallets && isManuallyRefreshing,
 
     // Mutations
     deployWallet: deployWallet.mutate,

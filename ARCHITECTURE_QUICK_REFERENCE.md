@@ -354,9 +354,9 @@ await multisigService.executeBelowLimit(
 ## 🔗 Related Documentation
 
 - **[Full Architecture Documentation](ARCHITECTURE.md)** - Detailed diagrams and explanations
-- **[JSDoc Template Guide](frontend/JSDOC_TEMPLATE.md)** - Documentation standards
-- **[Script Consolidation Report](SCRIPT_CONSOLIDATION.md)** - Utility scripts review
 - **[Security Analysis](SECURITY_ANALYSIS.md)** - Security audit findings
+- **[Production Readiness](PRODUCTION_READINESS_ASSESSMENT.md)** - Deployment assessment
+- **[Setup Guide](SETUP.md)** - Installation and configuration
 
 ---
 

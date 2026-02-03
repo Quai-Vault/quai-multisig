@@ -55,6 +55,18 @@ export class IndexerModuleService {
   }
 
   /**
+   * Check if an error indicates table doesn't exist (triggers fallback to blockchain)
+   */
+  private isTableNotFoundError(error: { code?: string; message?: string }): boolean {
+    return (
+      error.code === '42P01' ||
+      error.message?.includes('406') ||
+      error.message?.includes('relation') ||
+      error.message?.includes('does not exist')
+    ) ?? false;
+  }
+
+  /**
    * Get enabled/disabled status for all modules on a wallet
    */
   async getModuleStatuses(walletAddress: string): Promise<Record<string, boolean>> {
@@ -67,8 +79,7 @@ export class IndexerModuleService {
       .eq('wallet_address', validatedWallet.toLowerCase());
 
     if (error) {
-      // 406 = table doesn't exist in schema, trigger fallback silently
-      if (error.code === '42P01' || error.message?.includes('406')) {
+      if (this.isTableNotFoundError(error)) {
         throw new Error('wallet_modules table not available');
       }
       throw new Error(`Indexer query failed: ${error.message}`);
@@ -99,7 +110,9 @@ export class IndexerModuleService {
       .limit(1);
 
     if (error) {
-      // Trigger fallback to blockchain
+      if (this.isTableNotFoundError(error)) {
+        throw new Error('wallet_modules table not available');
+      }
       throw new Error(`Indexer query failed: ${error.message}`);
     }
 
@@ -126,6 +139,9 @@ export class IndexerModuleService {
 
     if (error) {
       if (error.code === 'PGRST116') return null;
+      if (this.isTableNotFoundError(error)) {
+        throw new Error('daily_limit_state table not available');
+      }
       throw new Error(`Indexer query failed: ${error.message}`);
     }
 
@@ -153,7 +169,12 @@ export class IndexerModuleService {
       .eq('wallet_address', validatedWallet.toLowerCase())
       .eq('is_active', true);
 
-    if (error) throw new Error(`Indexer query failed: ${error.message}`);
+    if (error) {
+      if (this.isTableNotFoundError(error)) {
+        throw new Error('whitelist_entries table not available');
+      }
+      throw new Error(`Indexer query failed: ${error.message}`);
+    }
 
     return (data ?? []).map((entry: unknown) => {
       const validated = WhitelistEntrySchema.parse(entry);
@@ -186,6 +207,9 @@ export class IndexerModuleService {
 
     if (configResult.error) {
       if (configResult.error.code === 'PGRST116') return null;
+      if (this.isTableNotFoundError(configResult.error)) {
+        throw new Error('social_recovery_configs table not available');
+      }
       throw new Error(`Indexer query failed: ${configResult.error.message}`);
     }
 
@@ -214,7 +238,12 @@ export class IndexerModuleService {
       .eq('wallet_address', validatedWallet.toLowerCase())
       .eq('status', 'pending');
 
-    if (error) throw new Error(`Indexer query failed: ${error.message}`);
+    if (error) {
+      if (this.isTableNotFoundError(error)) {
+        throw new Error('social_recoveries table not available');
+      }
+      throw new Error(`Indexer query failed: ${error.message}`);
+    }
 
     return (data ?? []).map((recovery: {
       recovery_hash: string;
@@ -257,7 +286,12 @@ export class IndexerModuleService {
 
     const { data, error } = await query;
 
-    if (error) throw new Error(`Indexer query failed: ${error.message}`);
+    if (error) {
+      if (this.isTableNotFoundError(error)) {
+        throw new Error('module_transactions table not available');
+      }
+      throw new Error(`Indexer query failed: ${error.message}`);
+    }
 
     return (data ?? []).map((tx: {
       module_type: string;

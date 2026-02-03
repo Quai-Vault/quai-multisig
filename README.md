@@ -89,9 +89,8 @@ npm run backend:dev
 - **[Architecture Documentation](ARCHITECTURE.md)** - Comprehensive system architecture with detailed diagrams
 - **[Architecture Quick Reference](ARCHITECTURE_QUICK_REFERENCE.md)** - Visual guide and cheat sheet
 - **[Security Analysis](SECURITY_ANALYSIS.md)** - Security audit findings and fixes
-- **[Script Consolidation Report](SCRIPT_CONSOLIDATION.md)** - Utility scripts organization
-- **[JSDoc Template Guide](frontend/JSDOC_TEMPLATE.md)** - Code documentation standards
-- **[Project Details](quai-multisig.md)** - Additional project documentation
+- **[Production Readiness](PRODUCTION_READINESS_ASSESSMENT.md)** - Deployment readiness assessment
+- **[Setup Guide](SETUP.md)** - Installation and configuration instructions
 
 ## Architecture
 

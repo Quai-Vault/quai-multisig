@@ -170,20 +170,14 @@ export function NewTransaction() {
         // Note: This is frontend-only enforcement and can be bypassed
         if (walletAddress && (!data || data === '0x')) {
           try {
-            // Fetch daily limit info if not already available
-            let limitInfo = dailyLimitInfo;
-            let remaining = remainingDailyLimit;
-            
-            if (!limitInfo || remaining === null) {
-              const dailyLimit = await multisigService.getDailyLimit(walletAddress);
-              if (dailyLimit.limit > 0n) {
-                limitInfo = { limit: dailyLimit.limit, spent: dailyLimit.spent };
-                remaining = await multisigService.getRemainingLimit(walletAddress);
-              }
-            }
-            
-            if (limitInfo && limitInfo.limit > 0n && remaining !== null && parsedValue > remaining) {
-              const formattedLimit = transactionBuilderService.formatValue(limitInfo.limit);
+            // Always fetch fresh data at validation time to catch recently-changed limits
+            const [dailyLimit, remaining] = await Promise.all([
+              multisigService.getDailyLimit(walletAddress),
+              multisigService.getRemainingLimit(walletAddress),
+            ]);
+
+            if (dailyLimit.limit > 0n && parsedValue > remaining) {
+              const formattedLimit = transactionBuilderService.formatValue(dailyLimit.limit);
               const formattedRemaining = transactionBuilderService.formatValue(remaining);
               newErrors.push(`Transaction exceeds daily limit. Daily limit: ${formattedLimit} QUAI, Remaining: ${formattedRemaining} QUAI. Note: This limit is only enforced in this frontend and can be bypassed by interacting with the contract directly.`);
             }
@@ -369,14 +363,14 @@ export function NewTransaction() {
         
         {/* Daily Limit Warning */}
         {canUseDailyLimit === true && (!data || data === '0x') && (
-          <div className="mt-4 bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-4">
+          <div className="mt-4 bg-yellow-50 dark:bg-gradient-to-r dark:from-yellow-900/90 dark:via-yellow-800/90 dark:to-yellow-900/90 border-l-4 border-yellow-500 dark:border-yellow-600 rounded-md p-4">
             <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
               <div>
-                <h4 className="text-base font-semibold text-yellow-200 mb-1">Daily Limit Enforcement Notice</h4>
-                <p className="text-sm text-yellow-200/90">
+                <h4 className="text-base font-semibold text-yellow-800 dark:text-yellow-200 mb-1">Daily Limit Enforcement Notice</h4>
+                <p className="text-sm text-yellow-700 dark:text-yellow-200/90">
                   The daily limit is <strong>ONLY enforced in this frontend</strong>. Transactions can bypass this limitation by interacting with the multisig wallet contract directly. This is a convenience feature, not a security mechanism.
                 </p>
               </div>
@@ -623,12 +617,12 @@ export function NewTransaction() {
               )}
               {canUseDailyLimit === true && !isWhitelisted && (!data || data === '0x') && (
                 <div className="pt-2 border-t border-dark-300 dark:border-dark-600">
-                  <div className="bg-gradient-to-r from-yellow-900/90 via-yellow-800/90 to-yellow-900/90 border-l-4 border-yellow-600 rounded-md p-3">
+                  <div className="bg-yellow-50 dark:bg-gradient-to-r dark:from-yellow-900/90 dark:via-yellow-800/90 dark:to-yellow-900/90 border-l-4 border-yellow-500 dark:border-yellow-600 rounded-md p-3">
                     <div className="flex items-start gap-2">
-                      <svg className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                       </svg>
-                      <p className="text-xs text-yellow-200/90">
+                      <p className="text-xs text-yellow-700 dark:text-yellow-200/90">
                         <strong>Note:</strong> Daily limit is ONLY enforced in this frontend. This can be bypassed by interacting with the contract directly.
                       </p>
                     </div>

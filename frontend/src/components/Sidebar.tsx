@@ -1,3 +1,4 @@
+import { useCallback, memo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import { useMultisig } from '../hooks/useMultisig';
@@ -5,17 +6,16 @@ import { WalletCard } from './WalletCard';
 import { EmptyState } from './EmptyState';
 import { ThemeToggle } from './ThemeToggle';
 
-export function Sidebar() {
+// Memoize formatAddress outside component to avoid recreation
+const formatAddress = (addr: string) => `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+
+export const Sidebar = memo(function Sidebar() {
   const { connect, disconnect, connected, address } = useWallet();
   const { userWallets, isLoadingWallets, isRefetchingWallets } = useMultisig();
   const location = useLocation();
 
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-
   return (
-    <aside className="fixed left-0 top-[7rem] h-[calc(100vh-7rem)] w-64 bg-white dark:bg-vault-dark-2 border-r-2 border-dark-200 dark:border-dark-700 flex flex-col z-20 overflow-hidden">
+    <aside className="fixed left-0 top-14 h-[calc(100vh-3.5rem)] w-64 bg-white dark:bg-vault-dark-2 border-r-2 border-dark-200 dark:border-dark-700 flex flex-col z-20 overflow-hidden">
 
       {/* Wallet Connect/Disconnect */}
       <div className="px-4 py-4 border-b border-dark-200 dark:border-dark-700">
@@ -144,4 +144,4 @@ export function Sidebar() {
       </div>
     </aside>
   );
-}
+});

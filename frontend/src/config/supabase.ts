@@ -14,8 +14,8 @@ export const supabase = SUPABASE_URL && SUPABASE_ANON_KEY
 export const INDEXER_CONFIG = {
   HEALTH_URL: import.meta.env.VITE_INDEXER_URL || 'http://localhost:3001',
   SCHEMA: NETWORK_SCHEMA,
-  HEALTH_CACHE_MS: 10000, // Cache health check for 10 seconds (reduced from 30s for faster recovery)
-  OPTIMISTIC_TIMEOUT_MS: 5000, // Time to wait before invalidating optimistic updates
+  HEALTH_CACHE_MS: 5000, // Cache health check for 5 seconds for faster recovery detection
+  OPTIMISTIC_TIMEOUT_MS: 3000, // Time to wait before invalidating optimistic updates (reduced for faster UX)
   MAX_SUBSCRIPTIONS: 10, // Max concurrent wallet subscriptions per client
   // Feature flag - enable indexer when credentials are available
   ENABLED: !!(SUPABASE_URL && SUPABASE_ANON_KEY),

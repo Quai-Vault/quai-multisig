@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { TransactionFlow } from '../TransactionFlow';
 import { useMultisig } from '../../hooks/useMultisig';
+import { useSimpleTransactionModalFlow } from '../../hooks/useTransactionModalFlow';
 import type { PendingTransaction } from '../../types';
 
 interface ExecuteTransactionModalProps {
@@ -18,14 +18,7 @@ export function ExecuteTransactionModal({
   transaction,
 }: ExecuteTransactionModalProps) {
   const { executeTransactionAsync } = useMultisig(walletAddress);
-  const [resetKey, setResetKey] = useState(0);
-
-  // Reset the flow when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setResetKey(prev => prev + 1);
-    }
-  }, [isOpen]);
+  const resetKey = useSimpleTransactionModalFlow(isOpen);
 
   const handleExecute = async (onProgress: (progress: any) => void) => {
     onProgress({ step: 'signing', message: 'Please approve the execution transaction in your wallet' });
