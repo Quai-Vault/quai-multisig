@@ -47,6 +47,12 @@ export default defineConfig(({ mode }) => {
   optimizeDeps: {
     include: ['react', 'react-dom', 'react-router-dom', 'quais', '@tanstack/react-query'],
   },
+  // SPA fallback for preview mode
+  preview: {
+    port: 4173,
+    strictPort: false,
+    host: true,
+  },
   test: {
     globals: true,
     environment: 'jsdom',
